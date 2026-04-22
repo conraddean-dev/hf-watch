@@ -23,8 +23,7 @@
   --border:     #2a1f00;
   --border-lit: #5a3a00;
   --text:     #ffaa00;
-  --text-dim: #6b4a00;
-  --sidebar-w: 286px;
+  --text-dim: #c07800;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -129,8 +128,8 @@ header {
 .map-views { flex: 1; position: relative; overflow: hidden; }
 .map-view { display: none; position: absolute; inset: 0; flex-direction: column; }
 .map-view.active { display: flex; }
-#map-wrap, #grey-wrap, #wx-wrap { flex: 1; position: relative; min-height: 0; }
-#leaflet-map, #grey-map, #wx-map { position: absolute; inset: 0; width: 100%; height: 100%; }
+#map-wrap, #wx-wrap { flex: 1; position: relative; min-height: 0; }
+#leaflet-map, #wx-map { position: absolute; inset: 0; width: 100%; height: 100%; }
 
 /* Aurora */
 #mv-aurora .aurora-dual { flex: 1; display: flex; gap: 10px; padding: 10px; background: #020208; min-height: 0; }
@@ -244,21 +243,27 @@ header {
 
 .settings-panel {
   position: absolute;
-  top: 76px; right: 16px;
-  width: 420px;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 860px;
+  max-width: calc(100vw - 32px);
   background: var(--bg2);
   border: 1px solid var(--border-lit);
   box-shadow: 0 8px 48px rgba(0,0,0,.7), 0 0 30px rgba(255,170,0,.07);
   animation: panel-in .18s ease;
-  overflow: hidden;
+  overflow: visible;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto 1fr;
 }
 @keyframes panel-in {
-  from { opacity: 0; transform: translateY(-10px); }
-  to   { opacity: 1; transform: none; }
+  from { opacity: 0; transform: translateY(-10px) translate(-50%,-50%); }
+  to   { opacity: 1; transform: translate(-50%,-50%); }
 }
 
 /* Panel header */
 .sp-head {
+  grid-column: 1 / -1;
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 16px 10px;
   border-bottom: 1px solid var(--border-lit);
@@ -315,10 +320,6 @@ header {
 .sp-theme-swatch.active { border-color: var(--amber); }
 .sp-theme-swatch:hover { border-color: var(--amber-dim); }
 .sp-theme-swatch .sw-lbl { font-family: 'Orbitron',sans-serif; font-size: .36rem; color: var(--text-dim); text-align: center; position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
-
-/* Save feedback */
-.sp-saved { font-size: .52rem; color: var(--green); letter-spacing: .1em; text-align: right; padding: 6px 16px 10px; height: 0; overflow: hidden; transition: height .2s; }
-.sp-saved.show { height: 24px; }
 
 
 /* ── INPUTS ── */
@@ -425,14 +426,14 @@ header {
 
 /* ── MAP BACKGROUNDS — kill white polar regions ── */
 .leaflet-container { background: var(--bg-solid) !important; }
-.map-views, #map-wrap, #grey-wrap, #wx-wrap { background: var(--bg-solid); }
+.map-views, #map-wrap, #wx-wrap { background: var(--bg-solid); }
 </style>
 </head>
 <body>
 
 <!-- HEADER -->
 <header>
-  <div class="logo">HF·WATCH<sup>v1</sup></div>
+  <div class="logo">HF·WATCH<sup>v0.6.0</sup></div>
   <div id="hdr-callsign" class="empty">⚙ SET CALLSIGN</div>
   <div class="hdr-sep"></div>
   <div class="hdr-time">
@@ -452,7 +453,6 @@ header {
     <!-- Map selector bar -->
     <div class="map-sel-bar">
       <button class="msel-btn active" data-map="grid">Grid Map</button>
-      <button class="msel-btn" data-map="grey">Greyline</button>
       <button class="msel-btn" data-map="aurora">Aurora</button>
       <button class="msel-btn" data-map="weather">Weather</button>
       <div class="msel-sep"></div>
@@ -492,21 +492,11 @@ header {
           </div>
           <div class="msel-sep" style="height:22px;margin:0 10px;"></div>
           <label class="ckl"><input type="checkbox" id="chk-fields" checked> Grid</label>
-          <label class="ckl"><input type="checkbox" id="chk-labels" checked> Labels</label>
           <label class="ckl"><input type="checkbox" id="chk-greyline"> Greyline</label>
           <div id="grid-readout" style="margin-left:auto;font-size:.55rem;color:var(--text-dim);">Click map to identify grid square</div>
         </div>
 
         <div id="map-wrap"><div id="leaflet-map"></div></div>
-      </div>
-
-      <!-- GREYLINE -->
-      <div class="map-view" id="mv-grey">
-        <div class="map-sub-bar">
-          <div id="sun-readout" style="color:var(--amber);font-size:.64rem;">☉ Calculating…</div>
-          <div id="grey-next" style="margin-left:auto;font-size:.57rem;color:var(--text-dim);">Updates every 60s</div>
-        </div>
-        <div id="grey-wrap"><div id="grey-map"></div></div>
       </div>
 
       <!-- AURORA -->
@@ -558,12 +548,12 @@ header {
       <div class="sb-section">
         <div class="sb-title">Solar Indices</div>
         <div class="sb-stats">
-          <div>
+          <div data-tip="Solar Flux Index — measures solar radio emissions at 10.7cm&#10;&#10;Below 100: Poor HF conditions&#10;100–150: Good conditions, most bands usable&#10;150–200: Excellent — 10m and above open&#10;200+: Outstanding — rare, peak solar cycle">
             <div class="sb-val" id="sfi">–</div>
             <div class="sb-lbl">Solar Flux (SFU)</div>
             <div class="sb-note" id="sfi-note"></div>
           </div>
-          <div>
+          <div data-tip="Sunspot Number — count of visible sunspots&#10;&#10;Sunspots drive solar activity and HF propagation.&#10;Higher numbers = more solar flux = better HF.&#10;&#10;0–30: Low activity&#10;30–100: Moderate&#10;100–200: High — good DX conditions&#10;200+: Very high — Solar Cycle 25 peak range">
             <div class="sb-val" id="ssn">–</div>
             <div class="sb-lbl">Sunspot Number</div>
             <div class="sb-note" id="ssn-note"></div>
@@ -574,11 +564,11 @@ header {
       <div class="sb-section">
         <div class="sb-title">Geomagnetic</div>
         <div class="sb-stats">
-          <div>
+          <div data-tip="Planetary K-index — measures geomagnetic disturbance (0–9)&#10;&#10;0–1: Quiet — excellent HF, aurora unlikely&#10;2–3: Unsettled — normal conditions&#10;4: Active — some polar path degradation&#10;5–6: G1–G2 Storm — HF disrupted at high latitudes&#10;7–8: G3–G4 Storm — widespread HF blackouts&#10;9: G5 Storm — severe, global HF disruption">
             <div class="sb-val" id="kp">–</div>
             <div class="sb-lbl" id="kp-status">Planetary Kp</div>
           </div>
-          <div>
+          <div data-tip="A-index — daily average geomagnetic activity (0–400)&#10;&#10;0–7: Quiet — best HF propagation&#10;8–15: Unsettled — minor effects&#10;16–29: Active — notable HF degradation&#10;30–49: Minor storm — HF unreliable at high latitudes&#10;50–99: Major storm — significant HF disruption&#10;100+: Severe storm — HF largely unusable">
             <div class="sb-val" id="aindex">–</div>
             <div class="sb-lbl" id="aindex-lbl">A-Index</div>
           </div>
@@ -590,12 +580,12 @@ header {
       <div class="sb-section">
         <div class="sb-title">Space Weather</div>
         <div class="sb-stats">
-          <div>
+          <div data-tip="X-Ray flux class from GOES satellite — solar flare intensity&#10;&#10;A/B: Background — no impact on HF&#10;C: Minor flare — slight HF fade on sun-facing paths&#10;M: Moderate flare — HF degraded on daylight paths&#10;X: Major flare — possible HF radio blackout (D-layer)&#10;X10+: Extreme — complete HF blackout possible">
             <div class="xray-class" id="xray">–</div>
             <div class="stat-lbl" id="xray-lbl">X-Ray Class</div>
             <div class="stat-sub" id="xray-note"></div>
           </div>
-          <div>
+          <div data-tip="Solar wind speed and Bz component&#10;&#10;Speed (km/s):&#10;300–400: Slow — minimal impact&#10;400–600: Moderate — watch Kp&#10;600+: Fast — potential geomagnetic storm&#10;&#10;Bz (interplanetary magnetic field):&#10;Positive (northward): Shields Earth — less impact&#10;Negative (southward): Couples to Earth's field&#10;Bz below -10nT: Storm likely — HF at risk">
             <div class="sb-val" id="sw-speed" style="font-size:1.5rem;">–</div>
             <div class="sb-lbl">Wind km/s</div>
             <div class="sb-note" id="sw-bz"></div>
@@ -706,10 +696,13 @@ header {
       <div class="sp-row">
         <label class="sp-lbl" for="s-owmkey">OpenWeatherMap Key</label>
         <div class="sp-inline" style="gap:6px;">
-          <input class="sp-input" id="s-owmkey" type="text" placeholder="Paste free API key" maxlength="64" autocomplete="off" spellcheck="false" style="width:180px;">
+          <input class="sp-input" id="s-owmkey" type="password" placeholder="Paste free API key" maxlength="64" autocomplete="off" spellcheck="false" style="width:160px;">
+          <button class="go-btn" type="button" onclick="toggleKeyVis('s-owmkey',this)" style="padding:4px 9px;font-size:.6rem;">👁</button>
           <a href="https://openweathermap.org/api" target="_blank" class="sp-unit" style="color:var(--amber-dim);">Get free key ↗</a>
         </div>
       </div>
+      <div class="sp-row">
+        <label class="sp-lbl" for="s-autocycle">Map Auto-Cycle</label>
         <div class="sp-inline">
           <input class="sp-input" id="s-autocycle" type="number" min="10" max="300" value="30">
           <span class="sp-unit">seconds</span>
@@ -726,6 +719,18 @@ header {
           <button class="go-btn" id="sp-log-import-btn" style="padding:5px 14px;">📂 Import ADIF File</button>
           <span id="sp-log-count" style="font-size:.52rem;color:var(--text-dim);"></span>
         </div>
+      </div>
+      <div class="sp-row">
+        <label class="sp-lbl" for="s-qrzkey">QRZ API Key</label>
+        <div class="sp-inline" style="gap:6px;">
+          <input class="sp-input" id="s-qrzkey" type="password" placeholder="QRZ logbook API key" maxlength="20" autocomplete="off" style="width:145px;">
+          <button class="go-btn" type="button" onclick="toggleKeyVis('s-qrzkey',this)" style="padding:4px 9px;font-size:.6rem;">👁</button>
+          <button class="go-btn" id="sp-qrz-sync-btn" style="padding:5px 12px;">↓ Sync QRZ Log</button>
+        </div>
+      </div>
+      <div class="sp-row" id="sp-qrz-status-row" style="display:none;">
+        <div class="sp-lbl"></div>
+        <span id="sp-qrz-status" style="font-size:.52rem;color:var(--text-dim);"></span>
       </div>
       <div class="sp-row">
         <label class="sp-lbl" for="s-log-filter">Date Filter</label>
@@ -751,6 +756,35 @@ header {
 
 <script>
 // ══════════════════════════════════════════
+// HF·WATCH — Version & Changelog
+// ══════════════════════════════════════════
+// Versioning follows Semantic Versioning (semver.org):
+//   MAJOR.MINOR.PATCH
+//   MAJOR — breaking changes or complete redesigns
+//   MINOR — new features, backward compatible
+//   PATCH — bug fixes, tweaks, minor adjustments
+//
+// v0.6.0 (2026-04-23)
+//   - QRZ Logbook API integration (FETCH with pagination, proxied via start.py)
+//   - QRZ API key field in settings with password masking + show/hide toggle
+//   - OWM API key masked with show/hide toggle, auto-re-masked on panel close
+//   - API keys confirmed stored only in browser localStorage, never on server
+//   - DX markers changed from triangles to diamonds (matches ◈ DX button icon)
+//   - Diamond anchor fix: line-height:0 wrapper eliminates inline baseline gap
+//   - Settings panel two-column grid layout — all sections visible without scrolling
+//   - Broken sp-row for Map Auto-Cycle repaired (missing closing div)
+//   - Settings panel centered on screen via transform: translate(-50%,-50%)
+//   - Greyline tab removed — overlay available via Grid Map checkbox
+//   - Grid + Labels merged into single Grid checkbox
+//   - Solar sidebar tooltips with ham-relevant propagation descriptions
+//   - NOAA alert hover tooltips reuse styled alert tooltip engine
+//   - Secondary text-dim brightened across all themes for readability
+//   - Weather modes: Radar (RainViewer), Clouds/Wind/Temp/Precip (OWM proxy)
+//   - start.py: /qrz-log POST proxy, /owm/ GET tile proxy, /spots DX proxy
+// ══════════════════════════════════════════
+
+const APP_VERSION = '0.6.0';
+// ══════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════
 const S = {
@@ -761,6 +795,7 @@ const S = {
   dxRefresh: parseInt(localStorage.getItem('hfw_dxrefresh')  || '60'),
   theme:     localStorage.getItem('hfw_theme')      || 'amber',
   owmKey:    localStorage.getItem('hfw_owmkey')     || '',
+  qrzKey:    localStorage.getItem('hfw_qrzkey')     || '',
 };
 
 // ══════════════════════════════════════════
@@ -781,7 +816,7 @@ setInterval(tickClock,1000); tickClock();
 // ══════════════════════════════════════════
 // MAP SELECTOR + AUTOSCROLL
 // ══════════════════════════════════════════
-const MAP_SEQ = ['grid','grey','aurora','weather'];
+const MAP_SEQ = ['grid','aurora','weather'];
 let _activeMap='grid', _autoTimer=null, _autoTick=0;
 
 function switchMap(id) {
@@ -791,7 +826,6 @@ function switchMap(id) {
   document.getElementById('mv-'+id).classList.add('active');
   setTimeout(() => {
     if (id==='grid')    { initMap();        window._map?.invalidateSize(); }
-    if (id==='grey')    { initGreyMap();    _greyMap?.invalidateSize(); renderGreyCanvas(); }
     if (id==='aurora')  { initAuroraView(); }
     if (id==='weather') { initWeatherMap(); _wxMap?.invalidateSize(); }
   }, 60);
@@ -828,42 +862,42 @@ document.getElementById('map-play-btn').addEventListener('click', toggleAutoScro
 const THEMES = {
   amber: {
     '--amber':'#ffaa00','--amber-dim':'#7a5000','--amber-bright':'#ffcc44',
-    '--amber-glow':'rgba(255,170,0,0.16)','--text':'#ffaa00','--text-dim':'#6b4a00',
+    '--amber-glow':'rgba(255,170,0,0.16)','--text':'#ffaa00','--text-dim':'#c07800',
     '--border':'#2a1f00','--border-lit':'#5a3a00',
     '--bg-solid':'#070705','--bg2':'#0e0e0a','--bg3':'#151510',
     '--scan-opacity':'0.045',
   },
   green: {
     '--amber':'#00dd77','--amber-dim':'#006633','--amber-bright':'#44ffaa',
-    '--amber-glow':'rgba(0,221,119,0.16)','--text':'#00dd77','--text-dim':'#005525',
+    '--amber-glow':'rgba(0,221,119,0.16)','--text':'#00dd77','--text-dim':'#00aa55',
     '--border':'#002a15','--border-lit':'#005a30',
     '--bg-solid':'#050a07','--bg2':'#09130d','--bg3':'#0e1a12',
     '--scan-opacity':'0.045',
   },
   blue: {
     '--amber':'#44aaff','--amber-dim':'#0055aa','--amber-bright':'#88ccff',
-    '--amber-glow':'rgba(68,170,255,0.16)','--text':'#44aaff','--text-dim':'#004488',
+    '--amber-glow':'rgba(68,170,255,0.16)','--text':'#44aaff','--text-dim':'#2288cc',
     '--border':'#001a3a','--border-lit':'#003a7a',
     '--bg-solid':'#050508','--bg2':'#090912','--bg3':'#0e0e1a',
     '--scan-opacity':'0.045',
   },
   purple: {
     '--amber':'#bb77ff','--amber-dim':'#660099','--amber-bright':'#dd99ff',
-    '--amber-glow':'rgba(187,119,255,0.16)','--text':'#bb77ff','--text-dim':'#550088',
+    '--amber-glow':'rgba(187,119,255,0.16)','--text':'#bb77ff','--text-dim':'#8844cc',
     '--border':'#1a003a','--border-lit':'#440077',
     '--bg-solid':'#070508','--bg2':'#100a12','--bg3':'#160e1a',
     '--scan-opacity':'0.045',
   },
   pink: {
     '--amber':'#ff55bb','--amber-dim':'#aa0066','--amber-bright':'#ff88cc',
-    '--amber-glow':'rgba(255,85,187,0.16)','--text':'#ff55bb','--text-dim':'#880044',
+    '--amber-glow':'rgba(255,85,187,0.16)','--text':'#ff55bb','--text-dim':'#cc2288',
     '--border':'#3a0022','--border-lit':'#7a0044',
     '--bg-solid':'#080507','--bg2':'#120a0f','--bg3':'#1a0e15',
     '--scan-opacity':'0.045',
   },
   light: {
     '--amber':'#e8e8e8','--amber-dim':'#888888','--amber-bright':'#ffffff',
-    '--amber-glow':'rgba(255,255,255,0.10)','--text':'#e8e8e8','--text-dim':'#777777',
+    '--amber-glow':'rgba(255,255,255,0.10)','--text':'#e8e8e8','--text-dim':'#aaaaaa',
     '--border':'#2a2a2a','--border-lit':'#555555',
     '--bg-solid':'#070705','--bg2':'#0e0e0a','--bg3':'#151510',
     '--green':'#2eff88','--red':'#ff3a3a','--yellow':'#ffd700','--blue':'#44aaff',
@@ -889,13 +923,14 @@ function applyTheme(name) {
 }
 
 function saveState() {
-  localStorage.setItem('hfw_call',       S.callsign);
-  localStorage.setItem('hfw_grid',       S.grid);
-  localStorage.setItem('hfw_refresh',    S.refresh);
-  localStorage.setItem('hfw_autocycle',  S.autocycle);
-  localStorage.setItem('hfw_dxrefresh',  S.dxRefresh);
-  localStorage.setItem('hfw_theme',      S.theme);
-  localStorage.setItem('hfw_owmkey',      S.owmKey);
+  localStorage.setItem('hfw_call',      S.callsign);
+  localStorage.setItem('hfw_grid',      S.grid);
+  localStorage.setItem('hfw_refresh',   S.refresh);
+  localStorage.setItem('hfw_autocycle', S.autocycle);
+  localStorage.setItem('hfw_dxrefresh', S.dxRefresh);
+  localStorage.setItem('hfw_theme',     S.theme);
+  localStorage.setItem('hfw_owmkey',    S.owmKey);
+  localStorage.setItem('hfw_qrzkey',    S.qrzKey);
   const badge = document.getElementById('qth-badge');
   if (badge) badge.textContent = (S.callsign||S.grid) ? `${S.callsign||'---'} / ${S.grid||'----'}` : '';
   const hdrCall = document.getElementById('hdr-callsign');
@@ -903,7 +938,6 @@ function saveState() {
   else { hdrCall.textContent = '⚙ SET CALLSIGN'; hdrCall.classList.add('empty'); }
 }
 
-let _savedTimer = null;
 
 function openSettings() {
   document.getElementById('s-call').value      = S.callsign;
@@ -912,6 +946,7 @@ function openSettings() {
   document.getElementById('s-dxrefresh').value = S.dxRefresh;
   document.getElementById('s-autocycle').value = S.autocycle;
   document.getElementById('s-owmkey').value    = S.owmKey;
+  document.getElementById('s-qrzkey').value    = S.qrzKey;
   document.getElementById('settings-overlay').classList.add('open');
   const focusEl = S.callsign ? 's-grid' : 's-call';
   setTimeout(() => document.getElementById(focusEl).focus(), 80);
@@ -928,6 +963,7 @@ function commitSettings() {
   S.callsign = newCall; S.grid = newGrid; S.refresh = newRef;
   S.dxRefresh = newDxRef; S.autocycle = newCycle;
   S.owmKey = document.getElementById('s-owmkey').value.trim();
+  S.qrzKey = document.getElementById('s-qrzkey').value.trim();
   saveState();
 
   if (S.grid && window._map) goToGrid(S.grid);
@@ -936,8 +972,24 @@ function commitSettings() {
   scheduleRefresh();
 }
 
+// ── API key show/hide toggle ──────────────────────────────────────────────────
+function toggleKeyVis(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const isHidden = input.type === 'password';
+  input.type = isHidden ? 'text' : 'password';
+  btn.textContent = isHidden ? '🙈' : '👁';
+}
+
 function closeSettings() {
   commitSettings();
+  // Re-mask all key fields on close for privacy
+  ['s-owmkey','s-qrzkey'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.type = 'password';
+  });
+  // Reset show buttons back to eye icon
+  document.querySelectorAll('[onclick^="toggleKeyVis"]').forEach(btn => btn.textContent = '👁');
   document.getElementById('settings-overlay').classList.remove('open');
 }
 
@@ -969,9 +1021,9 @@ document.getElementById('s-grid').addEventListener('input', (e) => {
 });
 
 // Enter/Escape in any settings field
-['s-call','s-grid','s-refresh','s-dxrefresh','s-autocycle'].forEach(id => {
+['s-call','s-grid','s-refresh','s-dxrefresh','s-autocycle','s-owmkey','s-qrzkey'].forEach(id => {
   document.getElementById(id).addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') closeSettings();
+    if (e.key === 'Enter')  closeSettings();
     if (e.key === 'Escape') document.getElementById('settings-overlay').classList.remove('open');
   });
 });
@@ -985,8 +1037,20 @@ document.querySelectorAll('.sp-theme-swatch').forEach(sw => {
   });
 });
 
-applyTheme(S.theme);   // apply saved theme on load
-saveState();
+// ── Solar stat tooltips — reuse alert tooltip engine ─────────────────────────
+document.querySelectorAll('[data-tip]').forEach(el => {
+  const text = el.getAttribute('data-tip');
+  el.style.cursor = 'help';
+  el.addEventListener('mouseenter', (e) => {
+    clearTimeout(_alertTipTimer);
+    _alertTip.innerHTML = text.replace(/\n/g, '<br>');
+    _alertTip.className = '';
+    _alertTip.style.display = 'block';
+    positionAlertTip(e);
+  });
+  el.addEventListener('mousemove', positionAlertTip);
+  el.addEventListener('mouseleave', hideAlertTip);
+});
 document.getElementById('refresh-btn').addEventListener('click', fetchAll);
 
 // ══════════════════════════════════════════
@@ -1002,6 +1066,7 @@ function setStatus(state, msg) {
 // ══════════════════════════════════════════
 const NOAA   = 'https://services.swpc.noaa.gov';
 const HAMQSL = 'https://www.hamqsl.com/solarxml.php';
+const WORLD_COPIES = [-360, 0, 360, 720]; // map copy offsets for wrap-around rendering
 
 async function safeFetch(url, type='json') {
   try {
@@ -1013,20 +1078,42 @@ async function safeFetch(url, type='json') {
 }
 
 async function fetchNoaaDailySolar() {
-  const text = await safeFetch(`${NOAA}/text/daily-solar-indices.txt`,'text');
+  const text = await safeFetch(`${NOAA}/text/daily-solar-indices.txt`, 'text');
   if (!text) return null;
-  const lines = text.split('\n').map(l=>l.trim()).filter(l=>/^(19|20)\d{2}\s+\d/.test(l));
-  if (!lines.length) return null;
-  for (let i=lines.length-1;i>=0;i--) {
-    const parts=lines[i].split(/\s+/); if(parts.length<5) continue;
-    const nums=parts.slice(3).map(v=>({raw:v,n:parseFloat(v)}));
-    const valid=idx=>nums[idx]&&!isNaN(nums[idx].n)&&!nums[idx].raw.startsWith('-');
-    const sfi=valid(0)?nums[0].n:null;
-    let ssn=null;
-    for(let j=1;j<Math.min(nums.length,6);j++){if(valid(j)&&nums[j].n>=0&&nums[j].n<500&&nums[j].n!==sfi){ssn=nums[j].n;break;}}
-    let ap=null;
-    for(let j=Math.min(nums.length-1,9);j>=2;j--){if(valid(j)&&nums[j].n>=0&&nums[j].n<=400){ap=nums[j].n;break;}}
-    if(sfi!==null) return {sfi,ssn,ap};
+
+  // Find column positions from the header line (starts with ':')
+  // Typical header: ":  yyyy mm dd  SFI  SSN  ..."
+  const lines = text.split('\n');
+  let sfiCol = 3, ssnCol = 4, apCol = 8; // sensible defaults
+  const headerLine = lines.find(l => l.startsWith(':') && /SFI|sfi/i.test(l));
+  if (headerLine) {
+    const cols = headerLine.replace(/^:?\s*/, '').split(/\s+/);
+    const si = cols.findIndex(c => /^sfi$/i.test(c));
+    const ni = cols.findIndex(c => /^ssn$/i.test(c));
+    const ai = cols.findIndex(c => /^(Ap|A-index)$/i.test(c));
+    if (si >= 0) sfiCol = si + 3; // +3 offset for yyyy mm dd prefix
+    if (ni >= 0) ssnCol = ni + 3;
+    if (ai >= 0) apCol  = ai + 3;
+  }
+
+  const dataLines = lines.map(l => l.trim()).filter(l => /^(19|20)\d{2}\s+\d/.test(l));
+  if (!dataLines.length) return null;
+
+  for (let i = dataLines.length - 1; i >= 0; i--) {
+    const parts = dataLines[i].split(/\s+/);
+    if (parts.length < 5) continue;
+
+    const parseCol = idx => {
+      const v = parts[idx];
+      if (!v || v.startsWith('-')) return null;
+      const n = parseFloat(v);
+      return isNaN(n) ? null : n;
+    };
+
+    const sfi = parseCol(sfiCol);
+    const ssn = parseCol(ssnCol);
+    const ap  = parseCol(apCol);
+    if (sfi !== null) return { sfi, ssn, ap };
   }
   return null;
 }
@@ -1103,9 +1190,35 @@ function renderAIndex(xml,noaa){
   const el=document.getElementById('aindex-lbl');
   el.textContent=v<=7?'Quiet':v<=15?'Unsettled':v<=29?'Active':v<=49?'Minor Storm':'Major Storm'; el.style.color=c;
 }
-function renderSolarWind(plasma,mag){
-  if(plasma&&plasma.length>1){const last=plasma[plasma.length-1];const idx=Array.isArray(plasma[0])?plasma[0].indexOf('speed'):2;const speed=parseFloat(last[idx>=0?idx:2]);if(!isNaN(speed)){const c=speed>600?'var(--red)':speed>450?'var(--yellow)':'var(--green)';setBig('sw-speed',Math.round(speed),c);}}else document.getElementById('sw-speed').textContent='N/A';
-  if(mag&&mag.length>1){const last=mag[mag.length-1];const bzIdx=Array.isArray(mag[0])?mag[0].indexOf('bz_gsm'):3;const btIdx=Array.isArray(mag[0])?mag[0].indexOf('bt'):6;const bz=parseFloat(last[bzIdx>=0?bzIdx:3]);const bt=parseFloat(last[btIdx>=0?btIdx:6]);if(!isNaN(bz)){const bzColor=bz<-5?'var(--red)':bz<0?'var(--yellow)':'var(--green)';document.getElementById('sw-bz').innerHTML=`<span style="color:${bzColor}">${bz>=0?`Bz +${bz.toFixed(1)}`:`Bz ${bz.toFixed(1)}`} nT${!isNaN(bt)?` | Bt ${bt.toFixed(1)}`:''}`;}}
+function renderSolarWind(plasma, mag) {
+  // Solar wind speed
+  if (plasma && plasma.length > 1) {
+    const last  = plasma[plasma.length - 1];
+    const idx   = Array.isArray(plasma[0]) ? plasma[0].indexOf('speed') : 2;
+    const speed = parseFloat(last[idx >= 0 ? idx : 2]);
+    if (!isNaN(speed)) {
+      const c = speed > 600 ? 'var(--red)' : speed > 450 ? 'var(--yellow)' : 'var(--green)';
+      setBig('sw-speed', Math.round(speed), c);
+    }
+  } else {
+    document.getElementById('sw-speed').textContent = 'N/A';
+  }
+
+  // Bz / Bt from magnetometer
+  if (mag && mag.length > 1) {
+    const last  = mag[mag.length - 1];
+    const bzIdx = Array.isArray(mag[0]) ? mag[0].indexOf('bz_gsm') : 3;
+    const btIdx = Array.isArray(mag[0]) ? mag[0].indexOf('bt')     : 6;
+    const bz    = parseFloat(last[bzIdx >= 0 ? bzIdx : 3]);
+    const bt    = parseFloat(last[btIdx >= 0 ? btIdx : 6]);
+    if (!isNaN(bz)) {
+      const bzColor = bz < -5 ? 'var(--red)' : bz < 0 ? 'var(--yellow)' : 'var(--green)';
+      const bzStr   = bz >= 0 ? `Bz +${bz.toFixed(1)}` : `Bz ${bz.toFixed(1)}`;
+      const btStr   = !isNaN(bt) ? ` | Bt ${bt.toFixed(1)}` : '';
+      document.getElementById('sw-bz').innerHTML =
+        `<span style="color:${bzColor}">${bzStr} nT${btStr}</span>`;
+    }
+  }
 }
 
 // ══════════════════════════════════════════
@@ -1260,7 +1373,7 @@ function initMap(){
     else{_gridGreyCanvas.getContext('2d').clearRect(0,0,_gridGreyCanvas.width,_gridGreyCanvas.height);}
   });
 
-  ['chk-fields','chk-labels'].forEach(id=>document.getElementById(id).addEventListener('change',()=>drawGrid(map)));
+  ['chk-fields'].forEach(id=>document.getElementById(id).addEventListener('change',()=>drawGrid(map)));
 
   // Callsign lookup controls
   const csIn=document.getElementById('cs-lookup-in');
@@ -1271,14 +1384,10 @@ function initMap(){
   csClear.addEventListener('click',clearCallsignPin);
 }
 
-// Greyline rendered on the grid map canvas (reuses greySun state)
+// Greyline rendered on the grid map canvas — passes map/canvas directly to avoid global mutation
 function renderGridGreyCanvas(){
   if(!window._map||!_gridGreyCanvas||!_greySun)return;
-  // Temporarily swap the map reference so renderGreyCanvas uses the grid map
-  const savedMap=_greyMap, savedCanvas=_greyCanvas;
-  _greyMap=window._map; _greyCanvas=_gridGreyCanvas;
-  renderGreyCanvas();
-  _greyMap=savedMap; _greyCanvas=savedCanvas;
+  renderGreyCanvasOn(window._map, _gridGreyCanvas);
 }
 
 // ── Callsign Lookup via HamDB ──
@@ -1373,9 +1482,9 @@ function setCsStatus(type, msg) {
   el.textContent = msg;
 }
 function drawGrid(map){
-  const showF=document.getElementById('chk-fields').checked;
-  const showL=document.getElementById('chk-labels').checked;
-  const bb=map.getBounds().pad(.3);
+  const showF = document.getElementById('chk-fields').checked;
+  const showL = showF; // labels follow grid — one checkbox controls both
+  const bb = map.getBounds().pad(.3);
   ['fields','squares','labels'].forEach(k=>{if(_gridLayers[k]){map.removeLayer(_gridLayers[k]);_gridLayers[k]=null;}});
 
   const _tc   = THEMES[S.theme] || THEMES.amber;
@@ -1445,24 +1554,14 @@ function computeTerminator(sunLat,sunLon){
 // GREYLINE MAP
 // ══════════════════════════════════════════
 let _greyMap=null,_greyCanvas=null,_greySun=null,_greyTick=0;
-function initGreyMap(){
-  if(_greyMap)return;
-  const center=S.grid?gridToLatLng(S.grid):[30,0];
-  _greyMap=L.map('grey-map',{center,zoom:2,minZoom:2,worldCopyJump:true});
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap contributors © CARTO',subdomains:'abcd',maxZoom:8}).addTo(_greyMap);
-  _greyCanvas=document.createElement('canvas'); Object.assign(_greyCanvas.style,{position:'absolute',top:'0',left:'0',pointerEvents:'none',zIndex:'400'}); _greyMap.getContainer().appendChild(_greyCanvas);
-  if(S.grid){const c=gridToLatLng(S.grid);L.marker(c,{icon:L.divIcon({html:`<div style="font-family:Orbitron,sans-serif;font-size:10px;font-weight:700;color:#ffcc44;text-shadow:0 0 8px #ffaa00;background:rgba(7,7,5,.88);padding:2px 6px;border:1px solid #5a3a00;transform:translate(-50%,-100%) translateY(-6px);white-space:nowrap">${S.callsign||S.grid}</div>`,iconSize:[0,0],className:''})}).addTo(_greyMap);}
-  const resize=()=>{const s=_greyMap.getSize();_greyCanvas.width=s.x;_greyCanvas.height=s.y;renderGreyCanvas();};
-  _greyMap.on('resize',resize);
-  let _greyRaf=null;
-  const schedGrey=()=>{ if(_greyRaf)return; _greyRaf=requestAnimationFrame(()=>{_greyRaf=null;renderGreyCanvas();}); };
-  _greyMap.on('move zoom moveend zoomend',schedGrey);
-  resize();
-}
+function renderGreyCanvasOn(map, canvas){ renderGreyCanvas(map, canvas); }
+
 function updateGreyline(){_greySun=getSunPosition(new Date());renderGreyCanvas();_greyTick=0;const el=document.getElementById('sun-readout');if(!el)return;const{lat,lon}=_greySun;el.textContent=`☉  Subsolar: ${Math.abs(lat).toFixed(2)}°${lat>=0?'N':'S'}, ${Math.abs(lon).toFixed(2)}°${lon>=0?'E':'W'}   |   Dec: ${lat.toFixed(2)}°`;}
-function renderGreyCanvas(){
-  if(!_greyMap||!_greyCanvas||!_greySun)return;
-  const map=_greyMap,canvas=_greyCanvas,ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;if(!W||!H)return;
+function renderGreyCanvas(targetMap, targetCanvas){
+  const map    = targetMap    || _greyMap;
+  const canvas = targetCanvas || _greyCanvas;
+  if(!map||!canvas||!_greySun)return;
+  const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;if(!W||!H)return;
   ctx.clearRect(0,0,W,H);
   const slr=_greySun.lat*Math.PI/180,sunLonR=_greySun.lon*Math.PI/180;
   let ll0,llW;try{ll0=map.containerPointToLatLng([0,H/2]);llW=map.containerPointToLatLng([W,H/2]);}catch(e){return;}
@@ -1861,12 +1960,17 @@ function gcPoints(lat1,lon1,lat2,lon2,steps=50) {
 
 // SVG triangle marker icon — anchor at visual center so arcs meet the pin center
 function dxTriIcon(color, flip=false) {
-  const pts = flip ? '8,0 0,14 16,14' : '8,14 0,0 16,0';
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="14" viewBox="0 0 16 14"><polygon points="${pts}" fill="${color}" fill-opacity=".9" stroke="rgba(0,0,0,.5)" stroke-width="1.2"/></svg>`;
+  const opacity = flip ? '0.7' : '0.95';
+  const size    = flip ? 10 : 12;
+  const half    = size / 2;
+  const s       = size, h = half;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 ${s} ${s}" style="display:block">
+    <polygon points="${h},0 ${s},${h} ${h},${s} 0,${h}" fill="${color}" fill-opacity="${opacity}" stroke="rgba(0,0,0,.5)" stroke-width="1.2"/>
+  </svg>`;
   return L.divIcon({
-    html: svg,
-    iconSize:   [16, 14],
-    iconAnchor: [8, 7],   // center of the bounding box — arc meets the triangle center
+    html:       `<div style="line-height:0;font-size:0">${svg}</div>`,
+    iconSize:   [s, s],
+    iconAnchor: [h, h],
     className:  ''
   });
 }
@@ -1982,9 +2086,6 @@ function dxClearLayers() {
   if (_dxOpenPopup) { map.removeLayer(_dxOpenPopup); _dxOpenPopup = null; }
 }
 
-// World copy offsets — covers ±2 full copies visible at minZoom:2
-const WORLD_COPIES = [-360, 0, 360, 720];
-
 function dxRender() {
   const map = window._map; if (!map) return;
   dxClearLayers();
@@ -2091,15 +2192,12 @@ let _logLinesOn   = true;
 // ── ADIF parser ──────────────────────────────────────────────────────────────
 function parseAdif(text) {
   const contacts = [];
-  // Split on <EOR> (case-insensitive)
-  const records = text.split(/<eor>/i);
+  const records  = text.split(/<eor>/i);
   for (const rec of records) {
     if (!rec.trim()) continue;
     const fields = {};
-    // Match <FIELD:length>value
-    const re = /<([A-Z_0-9]+):(\d+)(?::[^>]*)?>([^<]*)/gi;
-    let m;
-    while ((m = re.exec(rec)) !== null) {
+    // Use matchAll — cleaner than exec loop, no shared regex state issues
+    for (const m of rec.matchAll(/<([A-Z_0-9]+):(\d+)(?::[^>]*)?>([^<]*)/gi)) {
       const key = m[1].toUpperCase();
       const len = parseInt(m[2]);
       fields[key] = m[3].substring(0, len).trim();
@@ -2155,9 +2253,7 @@ function logRender() {
         try { homeLoc = gridToLatLng(g); break; } catch(e) {}
       }
     }
-    if (homeLoc) console.log('[LOG] Using MY_GRIDSQUARE from ADIF as home location');
   }
-  console.log('[LOG] homeLoc resolved:', homeLoc);
   if (!homeLoc) {
     document.getElementById('log-count').textContent = 'Set home grid in settings';
     console.warn('[LOG] No home location available — set grid square in ⚙ settings');
@@ -2222,7 +2318,6 @@ function logRender() {
     rendered++;
   }
 
-  console.log(`[LOG] Rendered: ${rendered}, skipped (date): ${skippedDate}, skipped (no coords): ${skippedCoord}`);
 
   _logLayers.lines = lineGroup.addTo(map);
   _logLayers.dots  = dotGroup.addTo(map);
@@ -2270,13 +2365,9 @@ function logHandleFile(file) {
   const reader = new FileReader();
   reader.onload = (e) => {
     const text = e.target.result;
-    console.log('[LOG] File size:', text.length, 'bytes');
-    console.log('[LOG] First 300 chars:', text.substring(0, 300));
 
     const contacts = parseAdif(text);
-    console.log('[LOG] Parsed contacts:', contacts.length);
     if (contacts.length > 0) {
-      console.log('[LOG] First contact fields:', JSON.stringify(contacts[0]));
     }
 
     if (!contacts.length) {
@@ -2284,7 +2375,11 @@ function logHandleFile(file) {
       return;
     }
     _logContacts = contacts;
-    try { localStorage.setItem('hfw_log', JSON.stringify(_logContacts)); } catch(e) {}
+    try {
+      localStorage.setItem('hfw_log', JSON.stringify(_logContacts));
+    } catch(e) {
+      console.warn('[LOG] localStorage quota exceeded — ADIF log in memory only, will not persist.');
+    }
     updateLogUI();
     if (_logActive) logRender();
     if (!_logActive) logToggle();
@@ -2292,6 +2387,110 @@ function logHandleFile(file) {
   reader.readAsText(file);
 }
 
+// ══════════════════════════════════════════
+// QRZ LOGBOOK API FETCH
+// ══════════════════════════════════════════
+// Spec: https://www.qrz.com/docs/logbook/QRZLogbookAPI.html
+// Proxied through start.py /qrz-log (POST) to avoid CORS
+// Requires QRZ XML subscription + logbook API key
+
+async function qrzFetchLog() {
+  const key = S.qrzKey.trim();
+  if (!key) {
+    qrzSetStatus('error', 'Enter your QRZ API key above first.');
+    return;
+  }
+
+  const statusRow = document.getElementById('sp-qrz-status-row');
+  statusRow.style.display = '';
+  qrzSetStatus('loading', 'Connecting to QRZ…');
+
+  let allAdif    = '';
+  let afterLogId = 0;
+  let page       = 0;
+  let totalFetched = 0;
+
+  try {
+    // Paginate: fetch pages of 250 until we get fewer than 250 back
+    while (true) {
+      page++;
+      qrzSetStatus('loading', `Fetching page ${page}… (${totalFetched} QSOs so far)`);
+
+      const resp = await fetch('/qrz-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          key,
+          options: `MAX:250,AFTERLOGID:${afterLogId}`,
+        }),
+      });
+
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+
+      if (data.error) {
+        qrzSetStatus('error', data.error);
+        return;
+      }
+
+      const adif  = data.adif  || '';
+      const count = parseInt(data.count || '0');
+
+      allAdif += adif;
+      totalFetched += count;
+
+      // Find highest app_qrzlog_logid in this page for pagination
+      const logids = (data.logids || '').split(',').map(Number).filter(Boolean);
+      const maxId  = logids.length ? Math.max(...logids) : 0;
+
+      if (count < 250 || maxId === 0) break;   // last page
+      afterLogId = maxId;
+
+      // Safety cap — prevent runaway loops on very large logs
+      if (page >= 40) {
+        qrzSetStatus('warn', `Stopped at ${totalFetched} QSOs (40-page limit). Use date filter to narrow.`);
+        break;
+      }
+    }
+
+    if (!allAdif.trim()) {
+      qrzSetStatus('warn', 'No QSOs found in this logbook.');
+      return;
+    }
+
+    // Parse combined ADIF and load into the log layer
+    const contacts = parseAdif(allAdif);
+    if (!contacts.length) {
+      qrzSetStatus('error', 'Could not parse QSO records from response.');
+      return;
+    }
+
+    _logContacts = contacts;
+    try {
+      localStorage.setItem('hfw_log', JSON.stringify(_logContacts));
+    } catch(e) {
+      console.warn('[LOG] localStorage quota exceeded — QRZ log in memory only, will not persist.');
+    }
+    updateLogUI();
+    qrzSetStatus('ok', `✓ ${contacts.length} QSOs loaded from QRZ`);
+
+    if (!_logActive) logToggle();
+    else logRender();
+
+  } catch(e) {
+    qrzSetStatus('error', `${e.message} — is start.py running?`);
+  }
+}
+
+function qrzSetStatus(type, msg) {
+  const el = document.getElementById('sp-qrz-status');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.color = type === 'ok'      ? 'var(--green)'
+                 : type === 'error'   ? 'var(--red)'
+                 : type === 'warn'    ? 'var(--yellow)'
+                 : 'var(--text-dim)';
+}
 // ── Wire all log controls ────────────────────────────────────────────────────
 function logWireControls() {
   // Toggle button
@@ -2304,6 +2503,7 @@ function logWireControls() {
   // Import buttons (toolbar + settings)
   document.getElementById('log-import-btn').addEventListener('click', () => fileInput.click());
   document.getElementById('sp-log-import-btn').addEventListener('click', () => fileInput.click());
+  document.getElementById('sp-qrz-sync-btn').addEventListener('click', qrzFetchLog);
 
   // Clear buttons
   const clearLog = () => {

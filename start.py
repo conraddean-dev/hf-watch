@@ -6,7 +6,7 @@ Usage:  python start.py
 Open:   http://localhost:8080/hf-watch.html
 """
 
-import os, sys, ssl, json, urllib.request
+import os, sys, ssl, json, urllib.request, urllib.parse
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -106,9 +106,79 @@ class Handler(SimpleHTTPRequestHandler):
         else:
             super().do_GET()
 
+    def do_POST(self):
+        if self.path == '/qrz-log':
+            self._proxy_qrz_log()
+        else:
+            self.send_response(405)
+            self.end_headers()
+
+    def _proxy_qrz_log(self):
+        """
+        Proxy POST requests to the QRZ Logbook API.
+        Client sends JSON {key, options} → we POST to QRZ → return parsed response.
+        """
+        try:
+            length = int(self.headers.get('Content-Length', 0))
+            body   = json.loads(self.rfile.read(length))
+            key    = body.get('key', '').strip()
+            opts   = body.get('options', 'MAX:250,AFTERLOGID:0')
+
+            if not key:
+                self._json_response({'error': 'No API key provided'})
+                return
+
+            post_data = urllib.parse.urlencode({
+                'KEY':    key,
+                'ACTION': 'FETCH',
+                'OPTION': opts,
+            }).encode('utf-8')
+
+            req = urllib.request.Request(
+                'https://logbook.qrz.com/api',
+                data=post_data,
+                method='POST',
+                headers={
+                    'User-Agent':   f'HF-WATCH/{PORT} (hf-watch)',
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                }
+            )
+            with urllib.request.urlopen(req, context=ssl_ctx, timeout=20) as r:
+                raw = r.read().decode('utf-8')
+
+            # QRZ returns URL-encoded name=value pairs
+            parsed = dict(urllib.parse.parse_qsl(raw, keep_blank_values=True))
+            result = parsed.get('RESULT', '').upper()
+
+            if result == 'OK':
+                self._json_response({
+                    'result': 'OK',
+                    'adif':   parsed.get('ADIF', ''),
+                    'count':  parsed.get('COUNT', '0'),
+                    'logids': parsed.get('LOGIDS', ''),
+                })
+            else:
+                msg = parsed.get('REASON') or parsed.get('ERROR') or raw[:200]
+                safe_print(f'  QRZ ✗  {msg}')
+                self._json_response({'error': msg, 'result': result})
+
+        except Exception as e:
+            safe_print(f'  QRZ !! {type(e).__name__}: {e}')
+            self._json_response({'error': f'{type(e).__name__}: {e}'})
+
+    def _json_response(self, obj):
+        body = json.dumps(obj).encode('utf-8')
+        self.send_response(200)
+        self._cors()
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(body)))
+        self.send_header('Cache-Control', 'no-store')
+        self.end_headers()
+        self.wfile.write(body)
+
     def _proxy_owm(self):
         # /owm/{layer}/{z}/{x}/{y}.png?appid={key}
-        # Proxies OWM tile requests to bypass browser CORS restrictions
+        # self.path[4:] strips '/owm' (4 chars), leaving /{layer}/... for the OWM tile URL
         try:
             req = urllib.request.Request(
                 f'https://tile.openweathermap.org/map{self.path[4:]}',
@@ -166,13 +236,12 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_header('Cache-Control', 'no-store')
             self.end_headers()
             self.wfile.write(body)
-            self.wfile.flush()
         except Exception as e:
             safe_print(f'  DX    response write error: {e}')
 
     def _cors(self):
         self.send_header('Access-Control-Allow-Origin',  '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', '*')
 
     def log_message(self, fmt, *args):
@@ -184,15 +253,15 @@ class Handler(SimpleHTTPRequestHandler):
 
 if __name__ == '__main__':
     safe_print(f'''
-  +----------------------------------------------+
-  |           HF.WATCH  --  start.py             |
-  +----------------------------------------------+
-  |  Serving from:                               |
-  |  {os.getcwd():<44s}|
-  |                                              |
-  |  Open -> http://localhost:{PORT}/hf-watch.html  |
-  |  Press  Ctrl+C  to stop                      |
-  +----------------------------------------------+
+  ╔══════════════════════════════════════════════╗
+  ║           HF·WATCH  —  start.py             ║
+  ╠══════════════════════════════════════════════╣
+  ║  Serving from:                               ║
+  ║  {os.getcwd():<44s}║
+  ║                                              ║
+  ║  Open → http://localhost:{PORT}/hf-watch.html  ║
+  ║  Press  Ctrl+C  to stop                      ║
+  ╚══════════════════════════════════════════════╝
 ''')
     try:
         ThreadingHTTPServer(('', PORT), Handler).serve_forever()
