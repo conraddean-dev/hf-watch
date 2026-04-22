@@ -1,0 +1,1850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HF·WATCH — Ham Radio Digital Signage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="leaflet.css" />
+<script src="leaflet.js"></script>
+<style>
+:root {
+  --bg-solid: #070705;
+  --bg2:      #0e0e0a;
+  --bg3:      #151510;
+  --amber:         #ffaa00;
+  --amber-dim:     #7a5000;
+  --amber-bright:  #ffcc44;
+  --amber-glow:    rgba(255,170,0,0.16);
+  --green:  #2eff88;
+  --red:    #ff3a3a;
+  --yellow: #ffd700;
+  --border:     #2a1f00;
+  --border-lit: #5a3a00;
+  --text:     #ffaa00;
+  --text-dim: #6b4a00;
+  --sidebar-w: 286px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 24px; } /* 1.5× base — scales all rem text 50% */
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  background: var(--bg-solid);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  display: flex; flex-direction: column; height: 100vh;
+}
+
+body::after {
+  content: ''; position: fixed; inset: 0;
+  background: repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.042) 2px,rgba(0,0,0,.042) 4px);
+  pointer-events: none; z-index: 9999;
+}
+
+header {
+  flex-shrink: 0; height: 72px;
+  display: flex; align-items: center;
+  padding: 0 18px 0 22px;
+  background: var(--bg2); border-bottom: 1px solid var(--border-lit); z-index: 100;
+  position: relative;
+}
+.logo {
+  font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 1.15rem;
+  letter-spacing: .32em; color: var(--amber-bright); white-space: nowrap; flex-shrink: 0;
+  text-shadow: 0 0 18px var(--amber), 0 0 40px rgba(255,170,0,.2);
+  padding-right: 24px; border-right: 1px solid var(--border-lit);
+}
+.logo sup { font-size: .4rem; color: var(--text-dim); vertical-align: super; margin-left: 3px; letter-spacing: .1em; }
+#hdr-callsign {
+  font-family: 'Orbitron', sans-serif; font-size: 1.2rem; font-weight: 900;
+  letter-spacing: .28em; color: var(--amber); text-shadow: 0 0 16px var(--amber);
+  /* Truly centered in the header — immune to clock width changes */
+  position: absolute;
+  left: 50%; transform: translateX(-50%);
+  white-space: nowrap; pointer-events: none;
+}
+#hdr-callsign.empty { color: var(--text-dim); font-size: .6rem; letter-spacing: .18em; font-weight: 400; }
+.hdr-sep { width: 1px; height: 28px; background: var(--border-lit); margin: 0 16px; margin-left: auto; }
+.hdr-time {
+  text-align: right; flex-shrink: 0; padding-right: 14px; border-right: 1px solid var(--border-lit);
+  /* Tabular nums so digit-width changes don't affect layout */
+  font-variant-numeric: tabular-nums;
+}
+#clock-time {
+  font-family: 'Orbitron', sans-serif; font-size: 1.15rem; font-weight: 600;
+  color: var(--amber-bright); text-shadow: 0 0 10px var(--amber); letter-spacing: .06em;
+  font-variant-numeric: tabular-nums;
+}
+#clock-date { font-size: .52rem; color: var(--amber-dim); letter-spacing: .1em; margin-top: 1px; }
+#clock-local { font-size: .52rem; color: var(--text-dim); letter-spacing: .06em; }
+.icon-btn {
+  background: transparent; border: 1px solid var(--border); color: var(--text-dim);
+  cursor: pointer; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; transition: all .15s; flex-shrink: 0; margin-left: 14px;
+}
+.icon-btn:hover { border-color: var(--amber); color: var(--amber); box-shadow: 0 0 8px rgba(255,170,0,.15); }
+
+/* ── MAIN LAYOUT ── */
+.main-layout { flex: 1; display: flex; overflow: hidden; min-height: 0; }
+
+/* ── MAP COLUMN ── */
+.map-column { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+/* Map selector bar */
+.map-sel-bar {
+  flex-shrink: 0; height: 52px;
+  display: flex; align-items: center; gap: 4px; padding: 0 12px;
+  background: var(--bg2); border-bottom: 1px solid var(--border-lit);
+}
+.msel-btn {
+  font-family: 'Orbitron', sans-serif; font-size: .54rem; font-weight: 600;
+  letter-spacing: .16em; padding: 7px 14px; background: transparent;
+  border: 1px solid var(--border); color: var(--text-dim); cursor: pointer;
+  transition: all .15s; text-transform: uppercase; white-space: nowrap;
+}
+.msel-btn:hover { border-color: var(--amber-dim); color: var(--amber); }
+.msel-btn.active { background: var(--amber-glow); border-color: var(--amber); color: var(--amber-bright); text-shadow: 0 0 8px var(--amber); }
+.msel-sep { width: 1px; height: 24px; background: var(--border-lit); margin: 0 6px; }
+.msel-play {
+  font-family: 'Orbitron', sans-serif; font-size: .54rem; letter-spacing: .12em;
+  padding: 7px 14px; background: var(--amber-glow); border: 1px solid var(--amber-dim);
+  color: var(--amber); cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.msel-play:hover { background: rgba(255,170,0,.22); border-color: var(--amber); }
+.msel-play.playing { border-color: var(--green); color: var(--green); background: rgba(46,255,136,.1); }
+#auto-countdown { font-size: .52rem; color: var(--text-dim); margin-left: 6px; min-width: 28px; }
+
+/* Per-map sub-toolbars */
+.map-sub-bar {
+  flex-shrink: 0; height: 46px;
+  display: flex; align-items: center; gap: 9px; padding: 0 12px;
+  background: var(--bg-solid); border-bottom: 1px solid var(--border);
+  font-size: .62rem;
+}
+
+/* Map views */
+.map-views { flex: 1; position: relative; overflow: hidden; }
+.map-view { display: none; position: absolute; inset: 0; flex-direction: column; }
+.map-view.active { display: flex; }
+#map-wrap, #grey-wrap, #wx-wrap { flex: 1; position: relative; min-height: 0; }
+#leaflet-map, #grey-map, #wx-map { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* Aurora */
+#mv-aurora .aurora-dual { flex: 1; display: flex; gap: 10px; padding: 10px; background: #020208; min-height: 0; }
+.aurora-hem { flex: 1; display: flex; flex-direction: column; border: 1px solid var(--border-lit); overflow: hidden; background: #020208; }
+.aurora-hem-title { font-family: 'Orbitron', sans-serif; font-size: .52rem; letter-spacing: .2em; color: var(--text-dim); text-align: center; padding: 5px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.aurora-img { flex: 1; width: 100%; height: 100%; object-fit: contain; display: block; }
+
+/* ── SOLAR SIDEBAR ── */
+.solar-sidebar {
+  width: 22%; min-width: 240px; max-width: 380px; flex-shrink: 0;
+  display: flex; flex-direction: column; overflow-y: auto;
+  background: var(--bg2); border-left: 1px solid var(--border-lit);
+}
+.sb-inner { padding: 14px 14px 52px; }
+.sb-section { margin-bottom: 16px; }
+.sb-title {
+  font-family: 'Orbitron', sans-serif; font-size: .49rem; letter-spacing: .22em;
+  color: var(--text-dim); text-transform: uppercase; margin-bottom: 10px;
+  padding-bottom: 6px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px;
+}
+.sb-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; margin-bottom: 10px; }
+.sb-val { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 2rem; line-height: 1; transition: color .4s; }
+.sb-lbl { font-size: .54rem; color: var(--text-dim); letter-spacing: .06em; margin-top: 3px; }
+.sb-note { font-size: .57rem; color: var(--text-dim); margin-top: 4px; line-height: 1.4; }
+
+.kp-bars { display: flex; gap: 4px; height: 44px; align-items: flex-end; margin-top: 8px; }
+.kp-bar { flex: 1; background: var(--border); border-radius: 1px; min-height: 3px; transition: height .5s; position: relative; }
+.kp-bar.current::after { content: '▲'; position: absolute; bottom: -15px; left: 50%; transform: translateX(-50%); font-size: .46rem; color: var(--amber); }
+.kp-nums { display: flex; gap: 4px; margin-top: 17px; }
+.kp-nums span { flex: 1; font-size: .44rem; text-align: center; color: var(--text-dim); }
+
+.xray-class { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 2.1rem; line-height: 1; transition: color .4s; }
+.stat-lbl { font-size: .56rem; color: var(--text-dim); letter-spacing: .06em; }
+.stat-sub { font-size: .6rem; color: var(--text-dim); margin-top: 4px; line-height: 1.5; }
+
+.band-table { width: 100%; border-collapse: collapse; }
+.band-table th { font-family: 'Orbitron', sans-serif; font-size: .45rem; letter-spacing: .1em; color: var(--text-dim); padding: 6px 6px; text-align: left; border-bottom: 1px solid var(--border); font-weight: 400; }
+.band-table td { padding: 8px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.band-table tr:last-child td { border-bottom: none; }
+.band-table tr:hover td { background: rgba(255,170,0,.03); }
+.band-name { font-family: 'Orbitron', sans-serif; font-size: .58rem; color: var(--amber-bright); }
+.band-freq { font-size: .56rem; color: var(--text-dim); }
+.cond { font-family: 'Orbitron', sans-serif; font-size: .48rem; letter-spacing: .08em; padding: 3px 8px; border: 1px solid currentColor; display: inline-block; }
+.cond-G { color: var(--green);  text-shadow: 0 0 5px var(--green);  border-color: rgba(46,255,136,.4); }
+.cond-F { color: var(--yellow); text-shadow: 0 0 5px var(--yellow); border-color: rgba(255,215,0,.4); }
+.cond-P { color: var(--red);    text-shadow: 0 0 5px var(--red);    border-color: rgba(255,58,58,.4); }
+.cond-U { color: var(--text-dim); border-color: var(--border); }
+
+.alerts-list { max-height: 140px; overflow-y: auto; }
+.alert-row { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: .6rem; line-height: 1.4; }
+.alert-row:last-child { border-bottom: none; }
+.alert-time { color: var(--amber-dim); white-space: nowrap; flex-shrink: 0; font-size: .54rem; }
+.alert-msg { color: var(--text-dim); }
+.alert-msg.warn { color: var(--red); }
+
+/* ── STATUS BAR ── */
+#status-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  display: flex; align-items: center; gap: 14px; padding: 5px 18px;
+  background: var(--bg2); border-top: 1px solid var(--border);
+  font-size: .55rem; color: var(--text-dim); z-index: 50;
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 7px var(--green); flex-shrink: 0; animation: blink 2s ease-in-out infinite; }
+.dot.stale { background: var(--yellow); box-shadow: 0 0 7px var(--yellow); }
+.dot.err   { background: var(--red);    box-shadow: 0 0 7px var(--red);    animation: none; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+#status-right { margin-left: auto; display: flex; gap: 16px; }
+#qth-badge { font-family: 'Orbitron', sans-serif; font-size: .5rem; color: var(--amber-dim); letter-spacing: .1em; }
+
+/* ── SETTINGS PANEL ── */
+.overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.55);
+  z-index: 800;   /* above greyline canvas (400) and all Leaflet panes */
+  backdrop-filter: blur(1px);
+}
+.overlay.open { display: block; }
+
+.settings-panel {
+  position: absolute;
+  top: 76px; right: 16px;
+  width: 420px;
+  background: var(--bg2);
+  border: 1px solid var(--border-lit);
+  box-shadow: 0 8px 48px rgba(0,0,0,.7), 0 0 30px rgba(255,170,0,.07);
+  animation: panel-in .18s ease;
+  overflow: hidden;
+}
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Panel header */
+.sp-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--border-lit);
+  background: var(--bg3);
+}
+.sp-title {
+  font-family: 'Orbitron', sans-serif; font-size: .62rem;
+  letter-spacing: .24em; color: var(--amber-bright);
+  text-shadow: 0 0 10px var(--amber);
+}
+.sp-hint { font-size: .5rem; color: var(--text-dim); letter-spacing: .04em; }
+
+/* Section groups */
+.sp-section {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.sp-section:last-child { border-bottom: none; }
+.sp-section-title {
+  font-family: 'Orbitron', sans-serif; font-size: .48rem;
+  letter-spacing: .2em; color: var(--text-dim); text-transform: uppercase;
+  margin-bottom: 10px; display: flex; align-items: center; gap: 7px;
+}
+.sp-section-title::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+
+/* Field rows */
+.sp-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.sp-row:last-child { margin-bottom: 0; }
+.sp-lbl { font-size: .52rem; color: var(--text-dim); letter-spacing: .09em; text-transform: uppercase; }
+.sp-input {
+  background: var(--bg-solid); border: 1px solid var(--border-lit);
+  color: var(--amber); font-family: 'Share Tech Mono', monospace;
+  font-size: .82rem; padding: 6px 10px; outline: none; width: 100%;
+  letter-spacing: .06em; transition: border-color .15s, box-shadow .15s;
+}
+.sp-input:focus { border-color: var(--amber); box-shadow: 0 0 10px rgba(255,170,0,.14); }
+.sp-input::placeholder { color: var(--text-dim); opacity: .6; }
+.sp-input[type=number] { -moz-appearance: textfield; }
+.sp-input[type=number]::-webkit-inner-spin-button { display: none; }
+
+/* Inline number row */
+.sp-inline { display: flex; align-items: center; gap: 8px; }
+.sp-inline .sp-input { width: 72px; text-align: center; }
+.sp-unit { font-size: .54rem; color: var(--text-dim); letter-spacing: .06em; }
+
+/* Theme swatches — placeholder for future use */
+.sp-themes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.sp-theme-swatch {
+  width: 36px; height: 24px; border: 2px solid var(--border-lit);
+  cursor: pointer; transition: border-color .15s; position: relative;
+}
+.sp-theme-swatch.active { border-color: var(--amber); }
+.sp-theme-swatch:hover { border-color: var(--amber-dim); }
+.sp-theme-swatch .sw-lbl { font-family: 'Orbitron',sans-serif; font-size: .36rem; color: var(--text-dim); text-align: center; position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
+
+/* Save feedback */
+.sp-saved { font-size: .52rem; color: var(--green); letter-spacing: .1em; text-align: right; padding: 6px 16px 10px; height: 0; overflow: hidden; transition: height .2s; }
+.sp-saved.show { height: 24px; }
+
+
+/* ── INPUTS ── */
+.tf { background: var(--bg2); border: 1px solid var(--border-lit); color: var(--amber); font-family: 'Share Tech Mono', monospace; font-size: .78rem; padding: 5px 10px; text-transform: uppercase; letter-spacing: .06em; outline: none; width: 100px; }
+.tf:focus { border-color: var(--amber); box-shadow: 0 0 7px rgba(255,170,0,.15); }
+.tf::placeholder { color: var(--text-dim); }
+.go-btn { background: var(--amber-glow); border: 1px solid var(--amber-dim); color: var(--amber); font-family: 'Orbitron', sans-serif; font-size: .52rem; letter-spacing: .14em; padding: 6px 13px; cursor: pointer; transition: all .15s; white-space: nowrap; }
+.go-btn:hover { background: rgba(255,170,0,.22); border-color: var(--amber); }
+.ckl { font-size: .6rem; color: var(--text-dim); display: flex; align-items: center; gap: 5px; cursor: pointer; white-space: nowrap; }
+.ckl input[type=checkbox] {
+  appearance: none; -webkit-appearance: none;
+  width: 14px; height: 14px; flex-shrink: 0;
+  border: 1px solid var(--amber-dim);
+  background: transparent; cursor: pointer;
+  position: relative; transition: border-color .15s, background .15s;
+}
+.ckl input[type=checkbox]:hover { border-color: var(--amber); }
+.ckl input[type=checkbox]:checked {
+  background: var(--amber-glow);
+  border-color: var(--amber);
+}
+.ckl input[type=checkbox]:checked::after {
+  content: '';
+  position: absolute; top: 1px; left: 3px;
+  width: 5px; height: 8px;
+  border: 2px solid var(--amber);
+  border-top: none; border-left: none;
+  transform: rotate(40deg);
+}
+
+/* ── CALLSIGN LOOKUP ── */
+.cs-lookup-wrap { display: flex; align-items: center; gap: 6px; }
+.cs-input { width: 110px; text-transform: uppercase; }
+.cs-clear-btn { border-color: var(--red); color: var(--red); }
+.cs-clear-btn:hover { background: rgba(255,58,58,.12); border-color: var(--red); }
+.cs-status {
+  font-size: .52rem; color: var(--text-dim); white-space: nowrap;
+  max-width: 200px; overflow: hidden; text-overflow: ellipsis;
+}
+.cs-status.found { color: var(--green); }
+.cs-status.err   { color: var(--red); }
+.cs-status.loading { color: var(--amber-dim); animation: ld 1s step-end infinite; }
+
+
+/* ── DX CLUSTER TOOLBAR ── */
+.dx-live-btn {
+  font-family:'Orbitron',sans-serif; font-size:.5rem; letter-spacing:.14em;
+  padding:5px 12px; border:1px solid var(--border-lit); background:transparent;
+  color:var(--text-dim); cursor:pointer; transition:all .15s; white-space:nowrap;
+}
+.dx-live-btn:hover { border-color:var(--amber-dim); color:var(--amber); }
+.dx-live-btn.active { border-color:var(--green); color:var(--green); background:rgba(46,255,136,.08); text-shadow:0 0 8px var(--green); }
+#dx-band-row { display:none; align-items:center; gap:4px; }
+.dx-band-btn {
+  font-family:'Orbitron',sans-serif; font-size:.44rem; letter-spacing:.1em;
+  padding:4px 9px; border:1px solid; background:transparent; cursor:pointer;
+  transition:all .15s; opacity:.28; white-space:nowrap;
+}
+.dx-band-btn.on { opacity:1; }
+#dx-spot-count { display:none; font-family:'Orbitron',sans-serif; font-size:.46rem; color:var(--amber-dim); letter-spacing:.08em; white-space:nowrap; }
+#dx-refresh-cd { display:none; font-size:.44rem; color:var(--text-dim); white-space:nowrap; }
+
+/* DX Spot popup label */
+.dx-spot-label {
+  font-family:'Share Tech Mono',monospace; background:rgba(4,8,14,.96);
+  border:1.5px solid currentColor; padding:6px 10px; white-space:nowrap;
+  box-shadow:0 0 14px rgba(0,0,0,.9); pointer-events:none;
+}
+.dx-label-call { font-family:'Orbitron',sans-serif; font-size:13px; font-weight:900; letter-spacing:.14em; }
+.dx-label-info { font-size:11px; margin-top:3px; opacity:.8; }
+
+/* ── LEAFLET ── */
+.leaflet-control-zoom a { background: var(--bg2); color: var(--amber); border-color: var(--border-lit); }
+.leaflet-control-zoom a:hover { background: var(--bg3); }
+.leaflet-control-attribution { background: rgba(7,7,5,.7) !important; color: var(--text-dim) !important; font-size: .5rem !important; }
+
+.ld { color: var(--text-dim); animation: ld 1s step-end infinite; }
+@keyframes ld { 0%,100%{opacity:1} 50%{opacity:0} }
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg-solid); }
+::-webkit-scrollbar-thumb { background: var(--border-lit); }
+::-webkit-scrollbar-thumb:hover { background: var(--amber-dim); }
+.wx-frame-bar { font-size: .6rem; color: var(--text-dim); }
+.wx-now { color: var(--yellow); font-family: 'Orbitron', sans-serif; font-size: .54rem; letter-spacing: .08em; }
+
+/* ── MAP BACKGROUNDS — kill white polar regions ── */
+.leaflet-container { background: var(--bg-solid) !important; }
+.map-views, #map-wrap, #grey-wrap, #wx-wrap { background: var(--bg-solid); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">HF·WATCH<sup>v1</sup></div>
+  <div id="hdr-callsign" class="empty">⚙ SET CALLSIGN</div>
+  <div class="hdr-sep"></div>
+  <div class="hdr-time">
+    <div id="clock-time">--:--:--</div>
+    <div id="clock-date">---- --- -- UTC</div>
+    <div id="clock-local"></div>
+  </div>
+  <button class="icon-btn" id="settings-btn" title="Station settings">⚙</button>
+</header>
+
+<!-- MAIN -->
+<div class="main-layout">
+
+  <!-- MAP COLUMN -->
+  <div class="map-column">
+
+    <!-- Map selector bar -->
+    <div class="map-sel-bar">
+      <button class="msel-btn active" data-map="grid">Grid Map</button>
+      <button class="msel-btn" data-map="grey">Greyline</button>
+      <button class="msel-btn" data-map="aurora">Aurora</button>
+      <button class="msel-btn" data-map="weather">Weather</button>
+      <div class="msel-sep"></div>
+      <button class="msel-play" id="map-play-btn">▶ AUTO</button>
+      <span id="auto-countdown"></span>
+      <div class="msel-sep"></div>
+      <button class="dx-live-btn" id="dx-live-btn">◈ DX</button>
+      <div id="dx-band-row"></div>
+      <span id="dx-spot-count"></span>
+      <span id="dx-refresh-cd"></span>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+        <button class="icon-btn" id="refresh-btn" title="Refresh data" style="width:26px;height:26px;font-size:.85rem;">↻</button>
+      </div>
+    </div>
+
+    <!-- Map views -->
+    <div class="map-views">
+
+      <!-- GRID -->
+      <div class="map-view active" id="mv-grid">
+        <div class="map-sub-bar">
+          <!-- Callsign Lookup -->
+          <div class="cs-lookup-wrap">
+            <input type="text" class="tf cs-input" id="cs-lookup-in" placeholder="W7XYZ" maxlength="12" autocomplete="off" spellcheck="false" title="Enter callsign to look up">
+            <button class="go-btn" id="cs-lookup-btn">LOOKUP</button>
+            <button class="go-btn cs-clear-btn" id="cs-clear-btn" title="Clear callsign pin" style="display:none;">✕ CLEAR</button>
+            <div id="cs-status" class="cs-status"></div>
+          </div>
+          <div class="msel-sep" style="height:22px;margin:0 10px;"></div>
+          <label class="ckl"><input type="checkbox" id="chk-fields" checked> Grid</label>
+          <label class="ckl"><input type="checkbox" id="chk-labels" checked> Labels</label>
+          <label class="ckl"><input type="checkbox" id="chk-greyline"> Greyline</label>
+          <div id="grid-readout" style="margin-left:auto;font-size:.55rem;color:var(--text-dim);">Click map to identify grid square</div>
+        </div>
+
+        <div id="map-wrap"><div id="leaflet-map"></div></div>
+      </div>
+
+      <!-- GREYLINE -->
+      <div class="map-view" id="mv-grey">
+        <div class="map-sub-bar">
+          <div id="sun-readout" style="color:var(--amber);font-size:.64rem;">☉ Calculating…</div>
+          <div id="grey-next" style="margin-left:auto;font-size:.57rem;color:var(--text-dim);">Updates every 60s</div>
+        </div>
+        <div id="grey-wrap"><div id="grey-map"></div></div>
+      </div>
+
+      <!-- AURORA -->
+      <div class="map-view" id="mv-aurora">
+        <div class="map-sub-bar">
+          <div id="aurora-kp-display" style="font-family:'Orbitron',sans-serif;font-size:.72rem;">Kp: –</div>
+          <div id="aurora-storm" style="font-size:.64rem;color:var(--text-dim);margin-left:6px;"></div>
+          <div id="aurora-vis" style="margin-left:auto;font-size:.59rem;color:var(--text-dim);"></div>
+          <div id="aurora-ts" style="font-size:.55rem;color:var(--text-dim);margin-left:12px;"></div>
+          <button class="go-btn" id="aurora-refresh" style="margin-left:8px;padding:4px 10px;">↻</button>
+        </div>
+        <div class="aurora-dual">
+          <div class="aurora-hem">
+            <div class="aurora-hem-title">☆ Northern Hemisphere</div>
+            <img id="aurora-north" class="aurora-img" src="" alt="NH Aurora" onerror="this.style.opacity='.2'">
+          </div>
+          <div class="aurora-hem">
+            <div class="aurora-hem-title">☆ Southern Hemisphere</div>
+            <img id="aurora-south" class="aurora-img" src="" alt="SH Aurora" onerror="this.style.opacity='.2'">
+          </div>
+        </div>
+      </div>
+
+      <!-- WEATHER -->
+      <div class="map-view" id="mv-weather">
+        <div class="map-sub-bar">
+          <button class="go-btn" id="wx-prev" style="padding:4px 8px;">⏮</button>
+          <button class="go-btn" id="wx-play" style="min-width:78px;padding:4px 10px;">▶ PLAY</button>
+          <button class="go-btn" id="wx-next" style="padding:4px 8px;">⏭</button>
+          <div id="wx-frame-label" class="wx-frame-bar" style="margin-left:8px;"></div>
+          <label class="ckl" style="margin-left:10px;"><input type="checkbox" id="wx-sat"> IR Sat</label>
+          <div style="margin-left:auto;font-size:.52rem;color:var(--text-dim);">RainViewer Radar</div>
+        </div>
+        <div id="wx-wrap"><div id="wx-map"></div></div>
+      </div>
+
+    </div><!-- /map-views -->
+  </div><!-- /map-column -->
+
+  <!-- SOLAR SIDEBAR -->
+  <div class="solar-sidebar">
+    <div class="sb-inner">
+
+      <div class="sb-section">
+        <div class="sb-title">Solar Indices</div>
+        <div class="sb-stats">
+          <div>
+            <div class="sb-val" id="sfi">–</div>
+            <div class="sb-lbl">Solar Flux (SFU)</div>
+            <div class="sb-note" id="sfi-note"></div>
+          </div>
+          <div>
+            <div class="sb-val" id="ssn">–</div>
+            <div class="sb-lbl">Sunspot Number</div>
+            <div class="sb-note" id="ssn-note"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sb-section">
+        <div class="sb-title">Geomagnetic</div>
+        <div class="sb-stats">
+          <div>
+            <div class="sb-val" id="kp">–</div>
+            <div class="sb-lbl" id="kp-status">Planetary Kp</div>
+          </div>
+          <div>
+            <div class="sb-val" id="aindex">–</div>
+            <div class="sb-lbl" id="aindex-lbl">A-Index</div>
+          </div>
+        </div>
+        <div class="kp-bars" id="kp-bars"></div>
+        <div class="kp-nums" id="kp-nums"></div>
+      </div>
+
+      <div class="sb-section">
+        <div class="sb-title">Space Weather</div>
+        <div class="sb-stats">
+          <div>
+            <div class="xray-class" id="xray">–</div>
+            <div class="stat-lbl" id="xray-lbl">X-Ray Class</div>
+            <div class="stat-sub" id="xray-note"></div>
+          </div>
+          <div>
+            <div class="sb-val" id="sw-speed" style="font-size:1.5rem;">–</div>
+            <div class="sb-lbl">Wind km/s</div>
+            <div class="sb-note" id="sw-bz"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sb-section">
+        <div class="sb-title">HF Band Conditions <span id="bc-source" style="font-size:.4rem;color:var(--text-dim);"></span></div>
+        <table class="band-table">
+          <thead><tr><th>Band</th><th>☀ Day</th><th>☾ Night</th></tr></thead>
+          <tbody id="band-tbody">
+            <tr><td colspan="3" class="ld" style="padding:10px;font-size:.65rem;">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="sb-section">
+        <div class="sb-title">NOAA Alerts <span id="alert-ct" style="font-size:.4rem;color:var(--text-dim);"></span></div>
+        <div class="alerts-list" id="alerts-list">
+          <div class="ld" style="font-size:.62rem;">Fetching…</div>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- /solar-sidebar -->
+
+</div><!-- /main-layout -->
+
+<!-- STATUS BAR -->
+<div id="status-bar">
+  <div class="dot" id="dot"></div>
+  <span id="status-msg">Initializing…</span>
+  <div id="status-right">
+    <span id="last-update"></span>
+    <span id="qth-badge"></span>
+    <span>HF·WATCH</span>
+  </div>
+</div>
+
+<!-- SETTINGS PANEL -->
+<div class="overlay" id="settings-overlay">
+  <div class="settings-panel" id="settings-panel">
+
+    <div class="sp-head">
+      <div class="sp-title">⚙ STATION SETTINGS</div>
+      <div class="sp-hint">Click outside to save &amp; close</div>
+    </div>
+
+    <!-- STATION IDENTITY -->
+    <div class="sp-section">
+      <div class="sp-section-title">Station Identity</div>
+      <div class="sp-row">
+        <label class="sp-lbl" for="s-call">Callsign</label>
+        <input class="sp-input" id="s-call" type="text" placeholder="W7XYZ" maxlength="10" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="sp-row">
+        <label class="sp-lbl" for="s-grid">Home Grid Square</label>
+        <input class="sp-input" id="s-grid" type="text" placeholder="DN17 or DN17ab" maxlength="6" autocomplete="off" spellcheck="false">
+      </div>
+    </div>
+
+    <!-- DISPLAY / THEME -->
+    <div class="sp-section">
+      <div class="sp-section-title">Display</div>
+      <div class="sp-row">
+        <div class="sp-lbl">Theme</div>
+        <div class="sp-themes">
+          <div class="sp-theme-swatch" data-theme="amber" style="background:linear-gradient(135deg,#070705 50%,#3a1f00 100%);border-color:#7a5000;">
+            <span class="sw-lbl" style="color:#ffaa00;">Amber</span>
+          </div>
+          <div class="sp-theme-swatch" data-theme="green" style="background:linear-gradient(135deg,#050a05 50%,#003a10 100%);border-color:#006633;">
+            <span class="sw-lbl" style="color:#00dd77;">Green</span>
+          </div>
+          <div class="sp-theme-swatch" data-theme="blue" style="background:linear-gradient(135deg,#050508 50%,#001a3a 100%);border-color:#0055aa;">
+            <span class="sw-lbl" style="color:#44aaff;">Blue</span>
+          </div>
+          <div class="sp-theme-swatch" data-theme="purple" style="background:linear-gradient(135deg,#080508 50%,#1a003a 100%);border-color:#660099;">
+            <span class="sw-lbl" style="color:#bb77ff;">Purple</span>
+          </div>
+          <div class="sp-theme-swatch" data-theme="pink" style="background:linear-gradient(135deg,#080508 50%,#3a0022 100%);border-color:#aa0066;">
+            <span class="sw-lbl" style="color:#ff55bb;">Pink</span>
+          </div>
+          <div class="sp-theme-swatch" data-theme="light" style="background:linear-gradient(135deg,#070705 50%,#333333 100%);border-color:#555555;">
+            <span class="sw-lbl" style="color:#e8e8e8;">White</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DATA & TIMING -->
+    <div class="sp-section">
+      <div class="sp-section-title">Data &amp; Timing</div>
+      <div class="sp-row">
+        <label class="sp-lbl" for="s-refresh">Solar Data Refresh</label>
+        <div class="sp-inline">
+          <input class="sp-input" id="s-refresh" type="number" min="5" max="60" value="5">
+          <span class="sp-unit">min (5–60)</span>
+        </div>
+      </div>
+      <div class="sp-row">
+        <label class="sp-lbl" for="s-dxrefresh">DX Cluster Refresh</label>
+        <div class="sp-inline">
+          <input class="sp-input" id="s-dxrefresh" type="number" min="30" max="300" value="60">
+          <span class="sp-unit">sec (30–300)</span>
+        </div>
+      </div>
+      <div class="sp-row">
+        <label class="sp-lbl" for="s-autocycle">Map Auto-Cycle</label>
+        <div class="sp-inline">
+          <input class="sp-input" id="s-autocycle" type="number" min="10" max="300" value="30">
+          <span class="sp-unit">seconds</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+const S = {
+  callsign:  localStorage.getItem('hfw_call')       || '',
+  grid:      localStorage.getItem('hfw_grid')       || '',
+  refresh:   parseInt(localStorage.getItem('hfw_refresh')    || '5'),
+  autocycle: parseInt(localStorage.getItem('hfw_autocycle')  || '30'),
+  dxRefresh: parseInt(localStorage.getItem('hfw_dxrefresh')  || '60'),
+  theme:     localStorage.getItem('hfw_theme')      || 'amber',
+};
+
+// ══════════════════════════════════════════
+// CLOCK
+// ══════════════════════════════════════════
+const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+function tickClock() {
+  const d = new Date();
+  const h=String(d.getUTCHours()).padStart(2,'0'), m=String(d.getUTCMinutes()).padStart(2,'0'), s=String(d.getUTCSeconds()).padStart(2,'0');
+  document.getElementById('clock-time').textContent = `${h}:${m}:${s}`;
+  document.getElementById('clock-date').textContent = `${d.getUTCFullYear()} ${MONTHS[d.getUTCMonth()]} ${String(d.getUTCDate()).padStart(2,'0')} UTC`;
+  const localStr = d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false});
+  const tzAbbr = d.toLocaleTimeString('en-US',{timeZoneName:'short'}).split(' ').pop();
+  document.getElementById('clock-local').textContent = `${localStr} ${tzAbbr}`;
+}
+setInterval(tickClock,1000); tickClock();
+
+// ══════════════════════════════════════════
+// MAP SELECTOR + AUTOSCROLL
+// ══════════════════════════════════════════
+const MAP_SEQ = ['grid','grey','aurora','weather'];
+let _activeMap='grid', _autoTimer=null, _autoTick=0;
+
+function switchMap(id) {
+  _activeMap = id;
+  document.querySelectorAll('.msel-btn').forEach(b => b.classList.toggle('active', b.dataset.map===id));
+  document.querySelectorAll('.map-view').forEach(v => v.classList.remove('active'));
+  document.getElementById('mv-'+id).classList.add('active');
+  setTimeout(() => {
+    if (id==='grid')    { initMap();        window._map?.invalidateSize(); }
+    if (id==='grey')    { initGreyMap();    _greyMap?.invalidateSize(); renderGreyCanvas(); }
+    if (id==='aurora')  { initAuroraView(); }
+    if (id==='weather') { initWeatherMap(); _wxMap?.invalidateSize(); }
+  }, 60);
+}
+
+document.querySelectorAll('.msel-btn').forEach(btn => {
+  btn.addEventListener('click', () => { _autoTick=0; switchMap(btn.dataset.map); });
+});
+
+function toggleAutoScroll() {
+  const btn = document.getElementById('map-play-btn');
+  if (_autoTimer) {
+    clearInterval(_autoTimer); _autoTimer=null; _autoTick=0;
+    btn.textContent='▶ AUTO'; btn.classList.remove('playing');
+    document.getElementById('auto-countdown').textContent='';
+  } else {
+    btn.textContent='⏸ AUTO'; btn.classList.add('playing');
+    _autoTick = S.autocycle;
+    _autoTimer = setInterval(() => {
+      _autoTick--;
+      document.getElementById('auto-countdown').textContent = `${_autoTick}s`;
+      if (_autoTick<=0) { _autoTick=S.autocycle; switchMap(MAP_SEQ[(MAP_SEQ.indexOf(_activeMap)+1)%MAP_SEQ.length]); }
+    }, 1000);
+  }
+}
+document.getElementById('map-play-btn').addEventListener('click', toggleAutoScroll);
+
+// ══════════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════════
+// ══════════════════════════════════════════
+// THEMES
+// ══════════════════════════════════════════
+const THEMES = {
+  amber: {
+    '--amber':'#ffaa00','--amber-dim':'#7a5000','--amber-bright':'#ffcc44',
+    '--amber-glow':'rgba(255,170,0,0.16)','--text':'#ffaa00','--text-dim':'#6b4a00',
+    '--border':'#2a1f00','--border-lit':'#5a3a00',
+    '--bg-solid':'#070705','--bg2':'#0e0e0a','--bg3':'#151510',
+    '--scan-opacity':'0.045',
+  },
+  green: {
+    '--amber':'#00dd77','--amber-dim':'#006633','--amber-bright':'#44ffaa',
+    '--amber-glow':'rgba(0,221,119,0.16)','--text':'#00dd77','--text-dim':'#005525',
+    '--border':'#002a15','--border-lit':'#005a30',
+    '--bg-solid':'#050a07','--bg2':'#09130d','--bg3':'#0e1a12',
+    '--scan-opacity':'0.045',
+  },
+  blue: {
+    '--amber':'#44aaff','--amber-dim':'#0055aa','--amber-bright':'#88ccff',
+    '--amber-glow':'rgba(68,170,255,0.16)','--text':'#44aaff','--text-dim':'#004488',
+    '--border':'#001a3a','--border-lit':'#003a7a',
+    '--bg-solid':'#050508','--bg2':'#090912','--bg3':'#0e0e1a',
+    '--scan-opacity':'0.045',
+  },
+  purple: {
+    '--amber':'#bb77ff','--amber-dim':'#660099','--amber-bright':'#dd99ff',
+    '--amber-glow':'rgba(187,119,255,0.16)','--text':'#bb77ff','--text-dim':'#550088',
+    '--border':'#1a003a','--border-lit':'#440077',
+    '--bg-solid':'#070508','--bg2':'#100a12','--bg3':'#160e1a',
+    '--scan-opacity':'0.045',
+  },
+  pink: {
+    '--amber':'#ff55bb','--amber-dim':'#aa0066','--amber-bright':'#ff88cc',
+    '--amber-glow':'rgba(255,85,187,0.16)','--text':'#ff55bb','--text-dim':'#880044',
+    '--border':'#3a0022','--border-lit':'#7a0044',
+    '--bg-solid':'#080507','--bg2':'#120a0f','--bg3':'#1a0e15',
+    '--scan-opacity':'0.045',
+  },
+  light: {
+    '--amber':'#e8e8e8','--amber-dim':'#888888','--amber-bright':'#ffffff',
+    '--amber-glow':'rgba(255,255,255,0.10)','--text':'#e8e8e8','--text-dim':'#777777',
+    '--border':'#2a2a2a','--border-lit':'#555555',
+    '--bg-solid':'#070705','--bg2':'#0e0e0a','--bg3':'#151510',
+    '--green':'#2eff88','--red':'#ff3a3a','--yellow':'#ffd700','--blue':'#44aaff',
+    '--scan-opacity':'0.045',
+  },
+};
+
+function applyTheme(name) {
+  S.theme = name;
+  const t = THEMES[name] || THEMES.amber;
+  const root = document.documentElement;
+  Object.entries(t).forEach(([k,v]) => root.style.setProperty(k, v));
+  Object.keys(THEMES.amber).forEach(k => { if(!(k in t)) root.style.setProperty(k, THEMES.amber[k]); });
+  document.querySelectorAll('.sp-theme-swatch').forEach(sw =>
+    sw.classList.toggle('active', sw.dataset.theme === name));
+  // Redraw greyline canvas if it's already active — deferred so all let vars are initialised
+  setTimeout(() => {
+    try {
+      if (window._map) drawGrid(window._map);
+      if (_greyMap && _greyCanvas && _greySun) renderGreyCanvas();
+    } catch(e) {}
+  }, 0);
+}
+
+function saveState() {
+  localStorage.setItem('hfw_call',       S.callsign);
+  localStorage.setItem('hfw_grid',       S.grid);
+  localStorage.setItem('hfw_refresh',    S.refresh);
+  localStorage.setItem('hfw_autocycle',  S.autocycle);
+  localStorage.setItem('hfw_dxrefresh',  S.dxRefresh);
+  localStorage.setItem('hfw_theme',      S.theme);
+  const badge = document.getElementById('qth-badge');
+  if (badge) badge.textContent = (S.callsign||S.grid) ? `${S.callsign||'---'} / ${S.grid||'----'}` : '';
+  const hdrCall = document.getElementById('hdr-callsign');
+  if (S.callsign) { hdrCall.textContent = S.callsign; hdrCall.classList.remove('empty'); }
+  else { hdrCall.textContent = '⚙ SET CALLSIGN'; hdrCall.classList.add('empty'); }
+}
+
+let _savedTimer = null;
+
+function openSettings() {
+  document.getElementById('s-call').value      = S.callsign;
+  document.getElementById('s-grid').value      = S.grid;
+  document.getElementById('s-refresh').value   = S.refresh;
+  document.getElementById('s-dxrefresh').value = S.dxRefresh;
+  document.getElementById('s-autocycle').value = S.autocycle;
+  document.getElementById('settings-overlay').classList.add('open');
+  const focusEl = S.callsign ? 's-grid' : 's-call';
+  setTimeout(() => document.getElementById(focusEl).focus(), 80);
+}
+
+function commitSettings() {
+  const newCall      = document.getElementById('s-call').value.toUpperCase().replace(/[^A-Z0-9/]/g,'').trim();
+  const newGrid      = document.getElementById('s-grid').value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6).trim();
+  const newRef       = Math.max(5,  Math.min(60,  parseInt(document.getElementById('s-refresh').value)    || S.refresh));
+  const newDxRef     = Math.max(30, Math.min(300, parseInt(document.getElementById('s-dxrefresh').value)  || S.dxRefresh));
+  const newCycle     = Math.max(10, Math.min(300, parseInt(document.getElementById('s-autocycle').value)  || S.autocycle));
+
+  const dxRefChanged = newDxRef !== S.dxRefresh;
+  S.callsign = newCall; S.grid = newGrid; S.refresh = newRef;
+  S.dxRefresh = newDxRef; S.autocycle = newCycle;
+  saveState();
+
+  if (S.grid && window._map) goToGrid(S.grid);
+  if (_autoTimer) { toggleAutoScroll(); toggleAutoScroll(); }
+  if (dxRefChanged && _dxActive) { clearInterval(_dxTimer); _dxTick = S.dxRefresh; _dxTimer = setInterval(dxTick, 1000); }
+  scheduleRefresh();
+}
+
+function closeSettings() {
+  commitSettings();
+  document.getElementById('settings-overlay').classList.remove('open');
+}
+
+// Open on settings button
+document.getElementById('settings-btn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  const ov = document.getElementById('settings-overlay');
+  if (ov.classList.contains('open')) { closeSettings(); } else { openSettings(); }
+});
+
+// Click outside panel → save & close
+document.getElementById('settings-overlay').addEventListener('click', (e) => {
+  if (!document.getElementById('settings-panel').contains(e.target)) closeSettings();
+});
+
+// Stop clicks inside panel from bubbling to overlay
+document.getElementById('settings-panel').addEventListener('click', (e) => e.stopPropagation());
+
+// Uppercase callsign/grid as you type
+document.getElementById('s-call').addEventListener('input', (e) => {
+  const pos = e.target.selectionStart;
+  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9/]/g,'');
+  e.target.setSelectionRange(pos, pos);
+});
+document.getElementById('s-grid').addEventListener('input', (e) => {
+  const pos = e.target.selectionStart;
+  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+  e.target.setSelectionRange(pos, pos);
+});
+
+// Enter/Escape in any settings field
+['s-call','s-grid','s-refresh','s-dxrefresh','s-autocycle'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') closeSettings();
+    if (e.key === 'Escape') document.getElementById('settings-overlay').classList.remove('open');
+  });
+});
+
+// Theme swatches — fully wired
+document.querySelectorAll('.sp-theme-swatch').forEach(sw => {
+  sw.addEventListener('click', () => {
+    S.theme = sw.dataset.theme;
+    applyTheme(S.theme);
+    saveState();
+  });
+});
+
+applyTheme(S.theme);   // apply saved theme on load
+saveState();
+document.getElementById('refresh-btn').addEventListener('click', fetchAll);
+
+// ══════════════════════════════════════════
+// STATUS
+// ══════════════════════════════════════════
+function setStatus(state, msg) {
+  document.getElementById('dot').className = 'dot'+(state==='ok'?'':state==='stale'?' stale':' err');
+  document.getElementById('status-msg').textContent = msg;
+}
+
+// ══════════════════════════════════════════
+// DATA SOURCES
+// ══════════════════════════════════════════
+const NOAA   = 'https://services.swpc.noaa.gov';
+const HAMQSL = 'https://www.hamqsl.com/solarxml.php';
+
+async function safeFetch(url, type='json') {
+  try {
+    const r = await fetch(url,{cache:'no-store'}); if(!r.ok) throw new Error(r.status);
+    if(type==='xml')  return new DOMParser().parseFromString(await r.text(),'text/xml');
+    if(type==='text') return await r.text();
+    return await r.json();
+  } catch(e) { return null; }
+}
+
+async function fetchNoaaDailySolar() {
+  const text = await safeFetch(`${NOAA}/text/daily-solar-indices.txt`,'text');
+  if (!text) return null;
+  const lines = text.split('\n').map(l=>l.trim()).filter(l=>/^(19|20)\d{2}\s+\d/.test(l));
+  if (!lines.length) return null;
+  for (let i=lines.length-1;i>=0;i--) {
+    const parts=lines[i].split(/\s+/); if(parts.length<5) continue;
+    const nums=parts.slice(3).map(v=>({raw:v,n:parseFloat(v)}));
+    const valid=idx=>nums[idx]&&!isNaN(nums[idx].n)&&!nums[idx].raw.startsWith('-');
+    const sfi=valid(0)?nums[0].n:null;
+    let ssn=null;
+    for(let j=1;j<Math.min(nums.length,6);j++){if(valid(j)&&nums[j].n>=0&&nums[j].n<500&&nums[j].n!==sfi){ssn=nums[j].n;break;}}
+    let ap=null;
+    for(let j=Math.min(nums.length-1,9);j>=2;j--){if(valid(j)&&nums[j].n>=0&&nums[j].n<=400){ap=nums[j].n;break;}}
+    if(sfi!==null) return {sfi,ssn,ap};
+  }
+  return null;
+}
+
+function xv(xml,tag){const el=xml&&xml.querySelector(tag);return el?el.textContent.trim():null;}
+
+// ══════════════════════════════════════════
+// RENDER HELPERS
+// ══════════════════════════════════════════
+function setBig(id,val,color){const el=document.getElementById(id);el.textContent=val;el.style.color=color||'var(--amber-bright)';el.style.textShadow=`0 0 16px ${color||'var(--amber)'}`;}
+function condClass(v){if(!v)return'cond cond-U';const l=v.toLowerCase();return l==='good'?'cond cond-G':l==='fair'?'cond cond-F':l==='poor'?'cond cond-P':'cond cond-U';}
+function condLabel(v){if(!v)return'–';const l=v.toLowerCase();return l==='good'?'GOOD':l==='fair'?'FAIR':l==='poor'?'POOR':v.toUpperCase();}
+
+function renderSFI(xml,noaa){
+  const raw=xml?xv(xml,'solarflux'):null, v=raw?parseInt(raw):(noaa?.sfi?Math.round(noaa.sfi):NaN);
+  if(isNaN(v)){document.getElementById('sfi').textContent='N/A';return;}
+  const c=v>=150?'var(--green)':v>=100?'var(--amber-bright)':v>=80?'var(--yellow)':'var(--red)';
+  setBig('sfi',v,c);
+  document.getElementById('sfi-note').textContent=v>=150?'Excellent':v>=120?'Very Good':v>=100?'Good':v>=80?'Fair':'Poor';
+}
+function renderSSN(xml,noaa){
+  const raw=xml?xv(xml,'sunspots'):null, v=raw?parseInt(raw):(noaa?.ssn!=null?Math.round(noaa.ssn):NaN);
+  if(isNaN(v)){document.getElementById('ssn').textContent='N/A';return;}
+  setBig('ssn',v,v>100?'var(--green)':v>50?'var(--amber-bright)':'var(--yellow)');
+  document.getElementById('ssn-note').textContent='Solar Cycle 25';
+}
+function renderKP(kpData,xml){
+  let current=NaN,history=[];
+  if(kpData){
+    let rows=Array.isArray(kpData)?kpData:[];
+    if(rows.length&&Array.isArray(rows[0])&&isNaN(parseFloat(rows[0][1])))rows=rows.slice(1);
+    if(rows.length&&!Array.isArray(rows[0]))rows=rows.map(r=>[r.time_tag||r.time,r.kp_index??r.kp??r.Kp??r.estimated_kp??null]);
+    const ext=r=>{for(const i of[1,2,3]){const v=parseFloat(r[i]);if(!isNaN(v)&&v>=0&&v<=9)return v;}return null;};
+    const all=rows.map(ext).filter(v=>v!==null); history=all.slice(-9); if(all.length)current=all[all.length-1];
+  }
+  if(isNaN(current)&&xml){const v=parseFloat(xv(xml,'kindex'));if(!isNaN(v))current=v;}
+  if(isNaN(current)){document.getElementById('kp').textContent='N/A';return;}
+  const c=current<2?'var(--green)':current<4?'var(--yellow)':current<6?'#ff8800':'var(--red)';
+  setBig('kp',current.toFixed(1),c);
+  const st=document.getElementById('kp-status');
+  st.textContent=current<2?'Quiet':current<4?'Unsettled':current<5?'Active':current<6?'G1 Storm':current<7?'G2 Storm':'G3+ Storm';
+  st.style.color=c;
+  const bars=document.getElementById('kp-bars'), nums=document.getElementById('kp-nums');
+  const disp=history.length>=8?history:[...Array(Math.max(0,9-history.length)).fill(null),...history];
+  bars.innerHTML=''; nums.innerHTML='';
+  disp.forEach((v,i)=>{
+    const bar=document.createElement('div'); bar.className='kp-bar'+(i===disp.length-1?' current':'');
+    const val=v??0; bar.style.height=Math.max(3,(val/9)*30)+'px';
+    if(v!==null){const bc=val<2?'#2eff88':val<4?'#ffd700':val<6?'#ff8800':'#ff3a3a';bar.style.background=bc;bar.style.boxShadow=`0 0 4px ${bc}66`;}
+    bars.appendChild(bar);
+    const lbl=document.createElement('span');lbl.textContent=i;nums.appendChild(lbl);
+  });
+}
+function renderXRay(xrData){
+  const el=document.getElementById('xray');
+  if(!xrData||xrData.length<2){el.textContent='N/A';return;}
+  const rows=xrData.filter(r=>r.energy==='0.1-0.8nm'||(Array.isArray(r)&&r.length>2));
+  const last=rows[rows.length-1]; if(!last){el.textContent='N/A';return;}
+  const flux=parseFloat(last.flux??last[1]??0); if(isNaN(flux)){el.textContent='N/A';return;}
+  let cls,c;
+  if(flux>=1e-3){cls='X'+(flux/1e-3).toFixed(1);c='var(--red)';}
+  else if(flux>=1e-4){cls='M'+(flux/1e-4).toFixed(1);c='#ff8800';}
+  else if(flux>=1e-5){cls='C'+(flux/1e-5).toFixed(1);c='var(--yellow)';}
+  else if(flux>=1e-6){cls='B'+(flux/1e-6).toFixed(1);c='var(--amber-bright)';}
+  else{cls='A'+(flux/1e-7).toFixed(1);c='var(--green)';}
+  el.textContent=cls;el.style.color=c;el.style.textShadow=`0 0 16px ${c}`;
+  document.getElementById('xray-note').textContent=flux>=1e-3?'⚠ Major flare':flux>=1e-4?'Moderate flare':flux>=1e-5?'Minor flare':flux>=1e-6?'Low activity':'Quiet sun';
+}
+function renderAIndex(xml,noaa){
+  const raw=xml?xv(xml,'aindex'):null, v=raw?parseInt(raw):(noaa?.ap!=null?Math.round(noaa.ap):NaN);
+  if(isNaN(v)){document.getElementById('aindex').textContent='N/A';return;}
+  const c=v<=7?'var(--green)':v<=15?'var(--yellow)':v<=29?'#ff8800':'var(--red)';
+  setBig('aindex',v,c);
+  const el=document.getElementById('aindex-lbl');
+  el.textContent=v<=7?'Quiet':v<=15?'Unsettled':v<=29?'Active':v<=49?'Minor Storm':'Major Storm'; el.style.color=c;
+}
+function renderSolarWind(plasma,mag){
+  if(plasma&&plasma.length>1){const last=plasma[plasma.length-1];const idx=Array.isArray(plasma[0])?plasma[0].indexOf('speed'):2;const speed=parseFloat(last[idx>=0?idx:2]);if(!isNaN(speed)){const c=speed>600?'var(--red)':speed>450?'var(--yellow)':'var(--green)';setBig('sw-speed',Math.round(speed),c);}}else document.getElementById('sw-speed').textContent='N/A';
+  if(mag&&mag.length>1){const last=mag[mag.length-1];const bzIdx=Array.isArray(mag[0])?mag[0].indexOf('bz_gsm'):3;const btIdx=Array.isArray(mag[0])?mag[0].indexOf('bt'):6;const bz=parseFloat(last[bzIdx>=0?bzIdx:3]);const bt=parseFloat(last[btIdx>=0?btIdx:6]);if(!isNaN(bz)){const bzColor=bz<-5?'var(--red)':bz<0?'var(--yellow)':'var(--green)';document.getElementById('sw-bz').innerHTML=`<span style="color:${bzColor}">${bz>=0?`Bz +${bz.toFixed(1)}`:`Bz ${bz.toFixed(1)}`} nT${!isNaN(bt)?` | Bt ${bt.toFixed(1)}`:''}`;}}
+}
+
+// ══════════════════════════════════════════
+// BAND CONDITIONS  (3-column sidebar)
+// ══════════════════════════════════════════
+const BAND_META=[{key:'80m-40m',label:'80m/40m'},{key:'30m-20m',label:'30m/20m'},{key:'17m-15m',label:'17m/15m'},{key:'12m-10m',label:'12m/10m'}];
+
+function renderBands(xml,noaa){
+  const tbody=document.getElementById('band-tbody'), src=document.getElementById('bc-source');
+  if(!xml){renderBandsDerived(noaa?.sfi||70,2);src.textContent='derived';return;}
+  const nodes=xml.querySelectorAll('calculatedconditions band');
+  if(!nodes.length){renderBandsDerived(parseInt(xv(xml,'solarflux'))||noaa?.sfi||70,parseFloat(xv(xml,'kindex'))||2);src.textContent='derived';return;}
+  const cm={};
+  nodes.forEach(b=>{const n=b.getAttribute('name'),t=b.getAttribute('time');if(!cm[n])cm[n]={};cm[n][t]=b.textContent.trim();});
+  tbody.innerHTML=BAND_META.map(b=>{const d=cm[b.key]?.day,n=cm[b.key]?.night;return`<tr><td><span class="band-name">${b.label}</span></td><td><span class="${condClass(d)}">${condLabel(d)}</span></td><td><span class="${condClass(n)}">${condLabel(n)}</span></td></tr>`;}).join('');
+  src.textContent='HamQSL'; src.style.color='var(--green)';
+}
+function renderBandsDerived(sfi,kp){
+  function calc(mSFI,mKP,tod){
+    if(tod==='day'  &&sfi>=mSFI+30&&kp<=mKP)  return'Good';
+    if(tod==='day'  &&sfi>=mSFI   &&kp<=mKP+1)return'Fair';
+    if(tod==='night'&&sfi>=mSFI-20&&kp<=mKP)  return'Good';
+    if(tod==='night'&&kp<=mKP+1)              return'Fair';
+    return'Poor';
+  }
+  const model=[{label:'80m/40m',mSFI:70,mKP:4},{label:'30m/20m',mSFI:90,mKP:3},{label:'17m/15m',mSFI:110,mKP:2},{label:'12m/10m',mSFI:130,mKP:2}];
+  document.getElementById('band-tbody').innerHTML=model.map(b=>{const d=calc(b.mSFI,b.mKP,'day'),n=calc(b.mSFI,b.mKP,'night');return`<tr><td><span class="band-name">${b.label}</span></td><td><span class="${condClass(d)}">${condLabel(d)}</span></td><td><span class="${condClass(n)}">${condLabel(n)}</span></td></tr>`;}).join('');
+}
+
+function renderAlerts(data){
+  const el=document.getElementById('alerts-list');
+  if(!data||!data.length){el.innerHTML='<span style="color:var(--green);font-size:.66rem;">✓ No active alerts</span>';document.getElementById('alert-ct').textContent='';return;}
+  const items=data.slice(0,6); document.getElementById('alert-ct').textContent=`(${items.length})`;
+  el.innerHTML=items.map(a=>{const msg=(a.message||'').split('\n')[0]||'';const time=(a.issue_time||'').substring(0,16);const isWarn=/warning|storm|watch/i.test(msg);return`<div class="alert-row"><span class="alert-time">${time}</span><span class="alert-msg${isWarn?' warn':''}">${msg.substring(0,140)}</span></div>`;}).join('');
+}
+
+// ══════════════════════════════════════════
+// MAIN FETCH
+// ══════════════════════════════════════════
+let _refreshTimer=null;
+async function fetchAll(){
+  setStatus('loading','Fetching space weather…');
+  const [xml,kpRaw,plasma,mag,xray,alerts,noaaSolar]=await Promise.all([
+    safeFetch(HAMQSL,'xml'), safeFetch(`${NOAA}/products/noaa-planetary-k-index.json`),
+    safeFetch(`${NOAA}/products/solar-wind/plasma-7-day.json`), safeFetch(`${NOAA}/products/solar-wind/mag-7-day.json`),
+    safeFetch(`${NOAA}/json/goes/primary/xrays-1-day.json`), safeFetch(`${NOAA}/products/alerts.json`),
+    fetchNoaaDailySolar(),
+  ]);
+  renderSFI(xml,noaaSolar); renderSSN(xml,noaaSolar); renderKP(kpRaw,xml);
+  renderXRay(xray); renderAIndex(xml,noaaSolar); renderSolarWind(plasma,mag);
+  renderBands(xml,noaaSolar); renderAlerts(alerts);
+  const ok=xml||kpRaw||plasma||noaaSolar;
+  const srcs=[xml?'HamQSL':null,noaaSolar?'NOAA':null,kpRaw?'Kp':null].filter(Boolean);
+  setStatus(ok?'ok':'stale',ok?`Live — ${srcs.join(' + ')} + SWPC`:'Sources unavailable');
+  const now=new Date();
+  document.getElementById('last-update').textContent=`Updated ${String(now.getUTCHours()).padStart(2,'0')}:${String(now.getUTCMinutes()).padStart(2,'0')} UTC`;
+  scheduleRefresh();
+}
+function scheduleRefresh(){if(_refreshTimer)clearTimeout(_refreshTimer);_refreshTimer=setTimeout(fetchAll,S.refresh*60000);}
+
+// ══════════════════════════════════════════
+// MAIDENHEAD
+// ══════════════════════════════════════════
+function gridToLatLng(g){g=g.toUpperCase();if(g.length<4)return[0,0];const lon0=(g.charCodeAt(0)-65)*20-180,lat0=(g.charCodeAt(1)-65)*10-90,lon1=lon0+parseInt(g[2])*2,lat1=lat0+parseInt(g[3]);if(g.length>=6)return[lat1+(g.charCodeAt(5)-65)*(1/24)+1/48,lon1+(g.charCodeAt(4)-65)*(2/24)+1/24];return[lat1+.5,lon1+1];}
+function latLngToGrid(lat,lng,len=4){if(lng<-180||lng>180||lat<-90||lat>90)return'????';const aLng=lng+180,aLat=lat+90;const f1=String.fromCharCode(65+Math.floor(aLng/20)),f2=String.fromCharCode(65+Math.floor(aLat/10)),s1=String(Math.floor((aLng%20)/2)),s2=String(Math.floor(aLat%10));if(len<=4)return f1+f2+s1+s2;const sub1=String.fromCharCode(65+Math.floor(((aLng%20)%2)/(2/24))),sub2=String.fromCharCode(65+Math.floor((aLat%1)/(1/24)));return(f1+f2+s1+s2+sub1+sub2).replace(/^(..)(..)(..)/, (_,a,b,c)=>a.toUpperCase()+b+c);}
+function gridBounds(g){g=g.toUpperCase();if(g.length<4)return null;const lon=(g.charCodeAt(0)-65)*20-180+parseInt(g[2])*2,lat=(g.charCodeAt(1)-65)*10-90+parseInt(g[3]);if(g.length>=6){const dlon=(g.charCodeAt(4)-65)*(2/24),dlat=(g.charCodeAt(5)-65)*(1/24);return[[lat+dlat,lon+dlon],[lat+dlat+1/24,lon+dlon+1/12]];}return[[lat,lon],[lat+1,lon+2]];}
+
+// ══════════════════════════════════════════
+// GRID MAP
+// ══════════════════════════════════════════
+let _mapInited=false, _gridLayers={}, _csMarker=null;
+
+let _gridGreyCanvas = null, _gridGreyOn = false;
+
+function initMap(){
+  if(_mapInited)return; _mapInited=true;
+  const center=S.grid?gridToLatLng(S.grid):[48.27,-116.55], zoom=S.grid?8:5;
+  const map=L.map('leaflet-map',{center,zoom,minZoom:2,worldCopyJump:true}); window._map=map;
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap contributors © CARTO',subdomains:'abcd',maxZoom:13}).addTo(map);
+  drawGrid(map);
+  map.on('zoomend moveend',()=>{clearTimeout(window._gridTimer);window._gridTimer=setTimeout(()=>drawGrid(map),200);});
+  map.on('click',e=>{const g4=latLngToGrid(e.latlng.lat,e.latlng.lng,4),g6=latLngToGrid(e.latlng.lat,e.latlng.lng,6);document.getElementById('grid-readout').textContent=`${g4} (${g6}) — ${e.latlng.lat.toFixed(4)}°, ${e.latlng.lng.toFixed(4)}°`;});
+
+  // Greyline canvas overlay on the grid map
+  _gridGreyCanvas = document.createElement('canvas');
+  Object.assign(_gridGreyCanvas.style,{position:'absolute',top:'0',left:'0',pointerEvents:'none',zIndex:'400'});
+  map.getContainer().appendChild(_gridGreyCanvas);
+  const resizeGGC=()=>{const s=map.getSize();_gridGreyCanvas.width=s.x;_gridGreyCanvas.height=s.y;if(_gridGreyOn)renderGridGreyCanvas();};
+  map.on('resize',resizeGGC);
+  let _gridGreyRaf=null;
+  const schedGridGrey=()=>{if(!_gridGreyOn)return;if(_gridGreyRaf)return;_gridGreyRaf=requestAnimationFrame(()=>{_gridGreyRaf=null;renderGridGreyCanvas();});};
+  map.on('move zoom moveend zoomend',schedGridGrey);
+  resizeGGC();
+
+  document.getElementById('chk-greyline').addEventListener('change',e=>{
+    _gridGreyOn=e.target.checked;
+    if(_gridGreyOn){if(!_greySun)updateGreyline();renderGridGreyCanvas();}
+    else{_gridGreyCanvas.getContext('2d').clearRect(0,0,_gridGreyCanvas.width,_gridGreyCanvas.height);}
+  });
+
+  ['chk-fields','chk-labels'].forEach(id=>document.getElementById(id).addEventListener('change',()=>drawGrid(map)));
+
+  // Callsign lookup controls
+  const csIn=document.getElementById('cs-lookup-in');
+  const csBtn=document.getElementById('cs-lookup-btn');
+  const csClear=document.getElementById('cs-clear-btn');
+  csIn.addEventListener('keyup',e=>{e.target.value=e.target.value.toUpperCase();if(e.key==='Enter')csBtn.click();});
+  csBtn.addEventListener('click',()=>lookupCallsign(csIn.value.trim().toUpperCase()));
+  csClear.addEventListener('click',clearCallsignPin);
+}
+
+// Greyline rendered on the grid map canvas (reuses greySun state)
+function renderGridGreyCanvas(){
+  if(!window._map||!_gridGreyCanvas||!_greySun)return;
+  // Temporarily swap the map reference so renderGreyCanvas uses the grid map
+  const savedMap=_greyMap, savedCanvas=_greyCanvas;
+  _greyMap=window._map; _greyCanvas=_gridGreyCanvas;
+  renderGreyCanvas();
+  _greyMap=savedMap; _greyCanvas=savedCanvas;
+}
+
+// ── Callsign Lookup via HamDB ──
+async function lookupCallsign(call) {
+  if (!call || call.length < 3) return;
+  const map = window._map; if (!map) return;
+
+  setCsStatus('loading', `Looking up ${call}…`);
+
+  // HamDB free API — FCC database, no key required, CORS-enabled
+  const url = `https://api.hamdb.org/v1/${encodeURIComponent(call)}/json/hf-watch`;
+  const data = await safeFetch(url);
+
+  if (!data) { setCsStatus('err', 'Network error — check connection'); return; }
+
+  const rec = data?.hamdb?.callsign;
+  const ok  = data?.hamdb?.messages?.status;
+
+  if (!rec || ok === 'NOT_FOUND' || rec.call === 'NOT_FOUND') {
+    setCsStatus('err', `${call} not found (US FCC only)`);
+    return;
+  }
+
+  const lat = parseFloat(rec.lat), lon = parseFloat(rec.lon);
+  if (isNaN(lat) || isNaN(lon) || (lat===0 && lon===0)) {
+    setCsStatus('err', `${call} found but no coordinates`);
+    return;
+  }
+
+  // Build display name — clubs have name only, individuals have fname + name
+  const name = [rec.fname, rec.name].filter(Boolean).join(' ').trim() || rec.call;
+  const grid = rec.grid || latLngToGrid(lat, lon, 4);
+  const loc  = [rec.addr2, rec.state].filter(Boolean).join(', ').trim();
+
+  // Place / replace pin
+  clearCallsignPin(false); // remove old pin without resetting input
+
+  const iconHtml = `
+    <div style="
+      position:relative;
+      display:inline-block;
+      transform:translate(-50%, -100%) translateY(-12px);
+    ">
+      <div style="
+        font-family:Orbitron,sans-serif;
+        background:rgba(4,12,20,.95);
+        border:2px solid #44aaff;
+        box-shadow:0 0 16px rgba(68,170,255,.5), inset 0 0 8px rgba(68,170,255,.08);
+        padding:8px 14px 10px;
+        white-space:nowrap;
+        text-align:center;
+        min-width:120px;
+      ">
+        <div style="font-size:22px;font-weight:900;color:#44aaff;text-shadow:0 0 12px #44aaff;letter-spacing:.18em;line-height:1.1;">${rec.call}</div>
+        <div style="font-size:13px;color:#aaddff;margin-top:4px;font-family:'Share Tech Mono',monospace;letter-spacing:.06em;line-height:1.3;">${name}</div>
+        <div style="font-size:11px;color:#6b99aa;margin-top:3px;font-family:'Share Tech Mono',monospace;letter-spacing:.04em;">${grid}${loc?' · '+loc:''}</div>
+      </div>
+      <div style="
+        position:absolute;left:50%;transform:translateX(-50%);
+        width:0;height:0;
+        border-left:8px solid transparent;
+        border-right:8px solid transparent;
+        border-top:12px solid #44aaff;
+        filter:drop-shadow(0 3px 6px rgba(68,170,255,.6));
+      "></div>
+    </div>`;
+
+  _csMarker = L.marker([lat, lon], {
+    icon: L.divIcon({ html: iconHtml, iconSize: null, iconAnchor: [0,0], className:'' }),
+    zIndexOffset: 1000
+  }).addTo(map);
+
+  map.flyTo([lat, lon], 9, { duration: 0.9 });
+  document.getElementById('grid-readout').textContent = `${rec.call} — ${name} — ${grid}`;
+  setCsStatus('found', `✓ ${rec.call}  ${name}  ${grid}`);
+  document.getElementById('cs-clear-btn').style.display = '';
+}
+
+function clearCallsignPin(resetInput=true) {
+  if (_csMarker && window._map) { window._map.removeLayer(_csMarker); _csMarker=null; }
+  if (resetInput) {
+    document.getElementById('cs-lookup-in').value = '';
+    document.getElementById('cs-clear-btn').style.display = 'none';
+    setCsStatus('', '');
+    document.getElementById('grid-readout').textContent = 'Click map to identify grid square';
+  }
+}
+
+function setCsStatus(type, msg) {
+  const el = document.getElementById('cs-status');
+  el.className = 'cs-status' + (type ? ' '+type : '');
+  el.textContent = msg;
+}
+function drawGrid(map){
+  const showF=document.getElementById('chk-fields').checked;
+  const showL=document.getElementById('chk-labels').checked;
+  const bb=map.getBounds().pad(.3);
+  ['fields','squares','labels'].forEach(k=>{if(_gridLayers[k]){map.removeLayer(_gridLayers[k]);_gridLayers[k]=null;}});
+
+  const _tc   = THEMES[S.theme] || THEMES.amber;
+  const cLine  = _tc['--amber']     || THEMES.amber['--amber'];
+  const cLabel = _tc['--amber-dim'] || THEMES.amber['--amber-dim'];
+
+  if(showF){
+    const fl=[];
+    const lonMin=Math.floor(bb.getWest()/20)*20-20, lonMax=Math.ceil(bb.getEast()/20)*20+20;
+    for(let lon=lonMin;lon<=lonMax;lon+=20) fl.push(L.polyline([[-90,lon],[90,lon]],{color:cLine,weight:1.5,opacity:.28}));
+    for(let lat=-90;lat<=90;lat+=10) fl.push(L.polyline([[lat,lonMin],[lat,lonMax]],{color:cLine,weight:1.5,opacity:.28}));
+    if(showL){
+      for(let lon=lonMin;lon<lonMax;lon+=20) for(let lat=-90;lat<90;lat+=10){
+        const clat=lat+5,clon=lon+10;
+        if(bb.contains([clat,clon])){
+          const fi=((lon%360)+360)%360/20|0, fj=(lat+90)/10|0;
+          fl.push(L.marker([clat,clon],{icon:L.divIcon({html:`<div style="font-family:Orbitron,sans-serif;font-size:11px;color:${cLabel};opacity:0.75;font-weight:700;pointer-events:none;transform:translate(-50%,-50%)">${String.fromCharCode(65+fi%18)+String.fromCharCode(65+fj)}</div>`,iconSize:[0,0],className:''})}));
+        }
+      }
+    }
+    _gridLayers.fields=L.layerGroup(fl).addTo(map);
+  }
+}
+function goToGrid(g,animate=true){
+  const map=window._map; if(!map)return;
+  g=g.toUpperCase().trim(); const center=gridToLatLng(g),zoom=g.length>=6?11:8;
+  if(animate)map.flyTo(center,zoom,{duration:.8});else map.setView(center,zoom);
+  if(_gridLayers.hl)map.removeLayer(_gridLayers.hl);
+  if(_gridLayers.mk)map.removeLayer(_gridLayers.mk);
+  const bounds=gridBounds(g);
+  // Draw highlight rect and marker on all world copies
+  const hlGroup=L.layerGroup(), mkGroup=L.layerGroup();
+  WORLD_COPIES.forEach(offset=>{
+    if(bounds) hlGroup.addLayer(L.rectangle([[bounds[0][0],bounds[0][1]+offset],[bounds[1][0],bounds[1][1]+offset]],{color:'#ffaa00',weight:2,fillColor:'#ffaa00',fillOpacity:.12,dashArray:'6 3'}));
+    const label=(S.callsign?`${S.callsign} `:'')+g;
+    mkGroup.addLayer(L.marker([center[0],center[1]+offset],{icon:L.divIcon({html:`<div style="font-family:Orbitron,sans-serif;font-size:11px;font-weight:700;color:#ffcc44;text-shadow:0 0 8px #ffaa00;white-space:nowrap;background:rgba(7,7,5,.85);padding:2px 7px;border:1px solid #5a3a00;transform:translate(-50%,-100%) translateY(-6px)">${label}</div>`,iconSize:[0,0],className:''})}));
+  });
+  _gridLayers.hl=hlGroup.addTo(map);
+  _gridLayers.mk=mkGroup.addTo(map);
+  document.getElementById('grid-readout').textContent=`QTH: ${g} — ${center[0].toFixed(4)}°N, ${center[1].toFixed(4)}°E`;
+}
+
+// ══════════════════════════════════════════
+// SOLAR POSITION
+// ══════════════════════════════════════════
+function getSunPosition(now){const n=(now.getTime()-Date.UTC(2000,0,1,12))/86400000,L=(280.460+0.9856474*n)%360,g=((357.528+0.9856003*n)%360)*Math.PI/180,lam=(L+1.915*Math.sin(g)+0.020*Math.sin(2*g))*Math.PI/180,eps=(23.439-0.0000004*n)*Math.PI/180,dec=Math.asin(Math.sin(eps)*Math.sin(lam)),ra=Math.atan2(Math.cos(eps)*Math.sin(lam),Math.cos(lam)),gmst=((280.46061837+360.98564736629*n)%360+360)%360,gha=gmst-ra*180/Math.PI,lon=((-gha%360)+360+180)%360-180;return{lat:dec*180/Math.PI,lon};}
+function computeTerminator(sunLat,sunLon){
+  const slr=sunLat*Math.PI/180, pts=[];
+  for(let ti=0;ti<=360;ti++){
+    const th=ti*Math.PI/180;
+    const latR=Math.asin(Math.cos(slr)*Math.cos(th));
+    const lonDeg=sunLon+Math.atan2(Math.sin(th)*Math.cos(slr),-Math.sin(slr)*Math.sin(latR))*180/Math.PI;
+    pts.push([latR*180/Math.PI, lonDeg]);
+  }
+  // Make consecutive longitudes continuous — eliminates the wrap-around horizontal line
+  for(let i=1;i<pts.length;i++){
+    while(pts[i][1]-pts[i-1][1]> 180) pts[i][1]-=360;
+    while(pts[i][1]-pts[i-1][1]<-180) pts[i][1]+=360;
+  }
+  // Normalise start point to [-180,180] so world-copy offsets are predictable
+  const shift=Math.round(pts[0][1]/360)*360;
+  pts.forEach(p=>p[1]-=shift);
+  return pts;
+}
+
+// ══════════════════════════════════════════
+// GREYLINE MAP
+// ══════════════════════════════════════════
+let _greyMap=null,_greyCanvas=null,_greySun=null,_greyTick=0;
+function initGreyMap(){
+  if(_greyMap)return;
+  const center=S.grid?gridToLatLng(S.grid):[30,0];
+  _greyMap=L.map('grey-map',{center,zoom:2,minZoom:2,worldCopyJump:true});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap contributors © CARTO',subdomains:'abcd',maxZoom:8}).addTo(_greyMap);
+  _greyCanvas=document.createElement('canvas'); Object.assign(_greyCanvas.style,{position:'absolute',top:'0',left:'0',pointerEvents:'none',zIndex:'400'}); _greyMap.getContainer().appendChild(_greyCanvas);
+  if(S.grid){const c=gridToLatLng(S.grid);L.marker(c,{icon:L.divIcon({html:`<div style="font-family:Orbitron,sans-serif;font-size:10px;font-weight:700;color:#ffcc44;text-shadow:0 0 8px #ffaa00;background:rgba(7,7,5,.88);padding:2px 6px;border:1px solid #5a3a00;transform:translate(-50%,-100%) translateY(-6px);white-space:nowrap">${S.callsign||S.grid}</div>`,iconSize:[0,0],className:''})}).addTo(_greyMap);}
+  const resize=()=>{const s=_greyMap.getSize();_greyCanvas.width=s.x;_greyCanvas.height=s.y;renderGreyCanvas();};
+  _greyMap.on('resize',resize);
+  let _greyRaf=null;
+  const schedGrey=()=>{ if(_greyRaf)return; _greyRaf=requestAnimationFrame(()=>{_greyRaf=null;renderGreyCanvas();}); };
+  _greyMap.on('move zoom moveend zoomend',schedGrey);
+  resize();
+  updateGreyline(); setInterval(updateGreyline,60000);
+  setInterval(()=>{_greyTick=(_greyTick+1)%60;const el=document.getElementById('grey-next');if(el)el.textContent=`Refreshes in: ${60-_greyTick}s`;},1000);
+}
+function updateGreyline(){_greySun=getSunPosition(new Date());renderGreyCanvas();_greyTick=0;const el=document.getElementById('sun-readout');if(!el)return;const{lat,lon}=_greySun;el.textContent=`☉  Subsolar: ${Math.abs(lat).toFixed(2)}°${lat>=0?'N':'S'}, ${Math.abs(lon).toFixed(2)}°${lon>=0?'E':'W'}   |   Dec: ${lat.toFixed(2)}°`;}
+function renderGreyCanvas(){
+  if(!_greyMap||!_greyCanvas||!_greySun)return;
+  const map=_greyMap,canvas=_greyCanvas,ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;if(!W||!H)return;
+  ctx.clearRect(0,0,W,H);
+  const slr=_greySun.lat*Math.PI/180,sunLonR=_greySun.lon*Math.PI/180;
+  let ll0,llW;try{ll0=map.containerPointToLatLng([0,H/2]);llW=map.containerPointToLatLng([W,H/2]);}catch(e){return;}
+  const lngStartR=ll0.lng*Math.PI/180,lngPerPxR=(llW.lng-ll0.lng)*Math.PI/180/W;
+  const cosD=Math.cos(lngPerPxR),sinD=Math.sin(lngPerPxR);
+  // Parse theme primary color into RGB for per-pixel twilight shading
+  const _hexCol = (THEMES[S.theme]||THEMES.amber)['--amber'] || '#ffaa00';
+  const _r=parseInt(_hexCol.slice(1,3),16), _g=parseInt(_hexCol.slice(3,5),16), _b=parseInt(_hexCol.slice(5,7),16);
+
+  const imgData=ctx.createImageData(W,H);const data=imgData.data;
+  for(let y=0;y<H;y++){let latlng;try{latlng=map.containerPointToLatLng([0,y]);}catch(e){continue;}
+    const latR=latlng.lat*Math.PI/180,A=Math.sin(latR)*Math.sin(slr),B=Math.cos(latR)*Math.cos(slr);
+    const a0=lngStartR-sunLonR;let ca=Math.cos(a0),sa=Math.sin(a0);
+    for(let x=0;x<W;x++){const se=A+B*ca,i=(y*W+x)*4;
+      if(se<-0.08){const d=Math.min(1,(-se-.08)*3.5);data[i]=0;data[i+1]=8;data[i+2]=28;data[i+3]=Math.round(95*d);}
+      else if(se<0.08){const t=(0.08-se)/.16;data[i]=Math.round(_r*t*.28);data[i+1]=Math.round(_g*t*.28);data[i+2]=Math.round(_b*t*.28);data[i+3]=Math.round(65*t);}
+      const nca=ca*cosD-sa*sinD;sa=sa*cosD+ca*sinD;ca=nca;}}
+  ctx.putImageData(imgData,0,0);
+
+  // Draw terminator — color follows active theme
+  const term=computeTerminator(_greySun.lat,_greySun.lon);
+  const _tc = THEMES[S.theme]||THEMES.amber;
+  const _tAmber  = _tc['--amber']        || THEMES.amber['--amber'];
+  const _tBright = _tc['--amber-bright'] || THEMES.amber['--amber-bright'];
+  const _tDim    = _tc['--amber-dim']    || THEMES.amber['--amber-dim'];
+  ctx.save();
+  ctx.strokeStyle=_tAmber;ctx.lineWidth=1.5;
+  ctx.shadowBlur=8;ctx.shadowColor=_tBright;
+  for(const offset of [-360,0,360,720]){
+    ctx.beginPath();let started=false;
+    for(const [lat,lon] of term){
+      let pt;try{pt=map.latLngToContainerPoint([lat,lon+offset]);}catch(e){continue;}
+      if(!started){ctx.moveTo(pt.x,pt.y);started=true;}else ctx.lineTo(pt.x,pt.y);
+    }
+    ctx.stroke();
+  }
+
+  // Sun symbol on all visible world copies
+  for(const copy of [-1,0,1,2]){
+    let sunPt;try{sunPt=map.latLngToContainerPoint([_greySun.lat,_greySun.lon+copy*360]);}catch(e){continue;}
+    if(sunPt.x<-50||sunPt.x>W+50)continue;
+    ctx.shadowBlur=24;ctx.shadowColor=_tBright;ctx.fillStyle=_tBright;
+    ctx.beginPath();ctx.arc(sunPt.x,sunPt.y,6,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle=_tDim;ctx.lineWidth=1.5;ctx.shadowBlur=0;ctx.stroke();
+    ctx.globalAlpha=0.4;ctx.strokeStyle=_tAmber;
+    for(let a=0;a<8;a++){const ang=a*Math.PI/4;ctx.beginPath();ctx.moveTo(sunPt.x+Math.cos(ang)*9,sunPt.y+Math.sin(ang)*9);ctx.lineTo(sunPt.x+Math.cos(ang)*14,sunPt.y+Math.sin(ang)*14);ctx.stroke();}
+    ctx.globalAlpha=1;
+  }
+  ctx.restore();
+}
+
+// ══════════════════════════════════════════
+// AURORA  (NOAA polar images)
+// ══════════════════════════════════════════
+const AURORA_N='https://services.swpc.noaa.gov/images/aurora-forecast-northern-hemisphere.jpg';
+const AURORA_S='https://services.swpc.noaa.gov/images/aurora-forecast-southern-hemisphere.jpg';
+let _auroraAutoTimer=null,_auroraInited=false;
+function initAuroraView(){
+  refreshAuroraImages();updateAuroraInfo();
+  if(!_auroraInited){_auroraInited=true;_auroraAutoTimer=setInterval(()=>{refreshAuroraImages();updateAuroraInfo();},600000);document.getElementById('aurora-refresh').addEventListener('click',()=>{refreshAuroraImages();updateAuroraInfo();});}
+}
+function refreshAuroraImages(){
+  const ts=Date.now(),n=document.getElementById('aurora-north'),s=document.getElementById('aurora-south');
+  if(n){n.style.opacity='.4';n.src=`${AURORA_N}?t=${ts}`;n.onload=()=>n.style.opacity='1';}
+  if(s){s.style.opacity='.4';s.src=`${AURORA_S}?t=${ts}`;s.onload=()=>s.style.opacity='1';}
+  const el=document.getElementById('aurora-ts');if(el){const now=new Date();el.textContent=`NOAA OVATION · ${String(now.getUTCHours()).padStart(2,'0')}:${String(now.getUTCMinutes()).padStart(2,'0')} UTC`;}
+}
+function updateAuroraInfo(){
+  safeFetch(`${NOAA}/products/noaa-planetary-k-index.json`).then(kpData=>{
+    if(!kpData)return;const rows=(Array.isArray(kpData)?kpData:[]).filter(r=>Array.isArray(r)&&!isNaN(parseFloat(r[1])));if(!rows.length)return;
+    const kp=parseFloat(rows[rows.length-1][1]),c=kp<3?'var(--green)':kp<5?'var(--yellow)':'var(--red)';
+    const kpEl=document.getElementById('aurora-kp-display'),stEl=document.getElementById('aurora-storm'),vEl=document.getElementById('aurora-vis');
+    if(!kpEl)return; kpEl.textContent=`Kp  ${kp.toFixed(1)}`;kpEl.style.color=c;
+    stEl.textContent=kp>=5?`G${Math.min(5,Math.floor(kp-4)+1)} Storm`:kp>=4?'Active':kp>=2?'Unsettled':'Quiet';stEl.style.color=c;
+    if(S.grid&&vEl){const qLat=Math.abs(gridToLatLng(S.grid)[0]),boundary=Math.max(40,66.5-kp*2.5);if(qLat>=boundary){vEl.textContent=`☑ Aurora possible at ${S.grid}`;vEl.style.color='var(--green)';}else{vEl.textContent=`${S.grid} needs Kp ≥ ${Math.ceil((66.5-qLat)/2.5)}`;vEl.style.color='var(--text-dim)';}}
+  });
+}
+
+// ══════════════════════════════════════════
+// WEATHER  (RainViewer)
+// ══════════════════════════════════════════
+let _wxMap=null,_wxLayer=null,_wxSatLayer=null,_wxFrames=[],_wxIdx=0,_wxPlaying=false,_wxPlayTimer=null,_wxData=null,_wxInited=false;
+async function initWeatherMap(){
+  if(_wxInited)return;_wxInited=true;
+  const center=S.grid?gridToLatLng(S.grid):[48,-116];
+  _wxMap=L.map('wx-map',{center,zoom:5});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap contributors © CARTO',subdomains:'abcd',maxZoom:19}).addTo(_wxMap);
+  document.getElementById('wx-prev').addEventListener('click',()=>setWxFrame(_wxIdx-1));
+  document.getElementById('wx-next').addEventListener('click',()=>setWxFrame(_wxIdx+1));
+  document.getElementById('wx-play').addEventListener('click',toggleWxPlay);
+  document.getElementById('wx-sat').addEventListener('change',toggleWxSat);
+  await fetchWeatherData();
+  if(_wxFrames.length)setWxFrame(_wxFrames.length-1);
+}
+async function fetchWeatherData(){
+  _wxData=await safeFetch('https://api.rainviewer.com/public/weather-maps.json');
+  if(!_wxData){const l=document.getElementById('wx-frame-label');if(l)l.textContent='RainViewer unavailable';return;}
+  _wxFrames=[...(_wxData.radar?.past||[]),...(_wxData.radar?.nowcast||[])];
+}
+function setWxFrame(idx){
+  if(!_wxMap||!_wxFrames.length||!_wxData)return;
+  _wxIdx=Math.max(0,Math.min(_wxFrames.length-1,idx));
+  const frame=_wxFrames[_wxIdx],host=_wxData.host||'https://tilecache.rainviewer.com';
+  if(_wxLayer)_wxMap.removeLayer(_wxLayer);
+  _wxLayer=L.tileLayer(`${host}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`,{tileSize:256,opacity:.72,attribution:'RainViewer',zIndex:2}).addTo(_wxMap);
+  const t=new Date(frame.time*1000),pastLen=_wxData.radar?.past?.length||0,isFore=_wxIdx>=pastLen;
+  const timeStr=`${String(t.getUTCHours()).padStart(2,'0')}:${String(t.getUTCMinutes()).padStart(2,'0')} UTC`;
+  const lbl=document.getElementById('wx-frame-label');if(lbl)lbl.innerHTML=isFore?`<span class="wx-now">▶ FORECAST ${timeStr}</span>`:`Frame ${_wxIdx+1}/${pastLen} — ${timeStr}`;
+}
+function toggleWxPlay(){_wxPlaying=!_wxPlaying;const btn=document.getElementById('wx-play');if(_wxPlaying){btn.textContent='⏸ PAUSE';_wxPlayTimer=setInterval(()=>setWxFrame((_wxIdx+1)%_wxFrames.length),600);}else{btn.textContent='▶ PLAY';clearInterval(_wxPlayTimer);}}
+function toggleWxSat(e){if(!_wxMap||!_wxData)return;if(e.target.checked){const sat=_wxData.satellite?.infrared;if(!sat?.length){e.target.checked=false;return;}const frame=sat[sat.length-1],host=_wxData.host||'https://tilecache.rainviewer.com';_wxSatLayer=L.tileLayer(`${host}${frame.path}/256/{z}/{x}/{y}/0/0_0.png`,{tileSize:256,opacity:.55,attribution:'RainViewer',zIndex:3}).addTo(_wxMap);}else{if(_wxSatLayer){_wxMap.removeLayer(_wxSatLayer);_wxSatLayer=null;}}}
+
+// ══════════════════════════════════════════
+// DX CLUSTER
+// ══════════════════════════════════════════
+
+// Band config — color, label, default state
+const DX_BANDS = {
+  '160':{ label:'160m', color:'#cc2200' },
+  '80': { label:'80m',  color:'#ff6600' },
+  '60': { label:'60m',  color:'#cc9900' },
+  '40': { label:'40m',  color:'#ffdd00' },
+  '30': { label:'30m',  color:'#88dd00' },
+  '20': { label:'20m',  color:'#00ddaa' },
+  '17': { label:'17m',  color:'#00aaff' },
+  '15': { label:'15m',  color:'#4477ff' },
+  '12': { label:'12m',  color:'#aa44ff' },
+  '10': { label:'10m',  color:'#ff44cc' },
+  '6':  { label:'6m',   color:'#ff2288' },
+};
+const DX_DEFAULT_ON = new Set(['80','40','20','10']);
+
+// Load saved band prefs or use defaults
+function dxLoadBandPrefs() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('hfw_dx_bands') || 'null');
+    if (saved && typeof saved === 'object') return new Set(Object.keys(saved).filter(k=>saved[k]));
+  } catch(e) {}
+  return new Set(DX_DEFAULT_ON);
+}
+function dxSaveBandPrefs(activeSet) {
+  const obj = {};
+  Object.keys(DX_BANDS).forEach(b => obj[b] = activeSet.has(b));
+  localStorage.setItem('hfw_dx_bands', JSON.stringify(obj));
+}
+
+let _dxActive = false;           // master on/off
+let _dxBandsOn = dxLoadBandPrefs();
+let _dxLayers = {};              // band → L.LayerGroup
+let _dxSpots = [];               // current spot list
+let _dxTimer = null;             // refresh countdown timer
+let _dxTick = 0;
+const DX_INTERVAL = 60;          // seconds between fetches
+let _dxOpenPopup = null;         // currently visible label marker
+
+// ── DXCC Prefix → [lat, lon]  (longest-first for correct matching) ──
+const DXCC_PREFIXES = [
+  // Special / long prefixes first
+  ['KH6',21.3,-157.8],['KH7',21.3,-157.8],['KH0',15.2,145.7],
+  ['KL7',64.2,-153.0],['KP4',18.2,-66.5], ['KP2',18.3,-64.9],
+  ['KG4',20.0,-75.1], ['VP9',32.3,-64.8], ['VP2M',16.7,-62.2],
+  ['VP2E',17.1,-61.8],['VP2V',18.4,-64.6],['VK9',14.2,144.7],
+  ['VK0',53.1,73.5],  ['ZL8',-29.0,-177.9],['ZL9',-46.9,168.0],
+  ['UA9',58.0,68.0],  ['UA0',52.0,104.0], ['RA9',58.0,68.0],
+  ['RA0',52.0,104.0], ['OH0',60.2,20.0],  ['OJ0',60.3,19.1],
+  ['EA8',28.3,-15.4], ['EA9',35.9,-5.3],  ['IG9',35.7,12.7],
+  ['IS0',39.9,9.1],   ['IT9',37.5,14.0],  ['JD1',27.1,142.2],
+  ['JW',78.0,15.0],   ['JX',71.0,-8.0],   ['TF',65.0,-18.0],
+  ['OX',70.0,-45.0],  ['OY',62.0,-7.0],   ['TJ',4.0,12.0],
+  ['ZD7',-15.9,-5.7], ['ZD8',-7.9,-14.4], ['ZD9',-37.1,-12.3],
+  ['C2',0.5,166.9],   ['T8',7.3,134.5],   ['V6',6.9,158.2],
+  ['YB',0.0,110.0],   ['9M2',5.0,117.0],  ['9M6',5.0,117.0],
+  ['VS6',22.3,114.2], ['VU7',10.0,72.8],  ['A5',27.5,90.4],
+  ['S2',23.7,90.4],   ['XU',12.6,104.9],  ['XW',18.0,103.0],
+  ['XV',16.0,106.0],  ['XZ',19.8,96.2],
+  // Standard 2-char prefixes
+  ['4X',31.5,35.0],   ['4Z',31.5,35.0],   ['4U1',48.2,16.4],
+  ['5B',35.0,33.0],   ['5N',10.0,8.0],    ['5R',-20.0,47.0],
+  ['5T',18.0,-16.0],  ['5U',14.0,8.0],    ['5W',-13.8,-172.0],
+  ['5X',1.0,32.0],    ['5Z',1.0,38.0],    ['6W',14.0,-14.0],
+  ['6Y',18.0,-77.0],  ['7Q',-14.0,34.0],  ['7X',28.0,3.0],
+  ['7Z',24.0,45.0],   ['8P',13.2,-59.5],  ['8R',5.0,-59.0],
+  ['9A',45.0,16.0],   ['9G',8.0,-1.0],    ['9H',35.9,14.5],
+  ['9J',-15.0,28.0],  ['9K',29.5,48.0],   ['9L',8.5,-11.8],
+  ['9Q',-4.0,22.0],   ['9U',-3.0,30.0],   ['9V',1.4,103.8],
+  ['9X',-2.0,30.0],   ['9Y',10.5,-61.4],
+  ['A4',23.6,58.6],   ['A6',24.5,54.5],   ['A7',25.3,51.5],
+  ['A9',26.0,50.5],   ['AP',30.0,70.0],   ['BV',24.0,121.0],
+  ['BY',35.0,105.0],  ['C3',42.5,1.5],    ['C6',25.0,-77.0],
+  ['CE',-30.0,-71.0], ['CM',22.0,-79.5],  ['CN',32.0,-6.0],
+  ['CP',-17.0,-65.0], ['CT',39.5,-8.0],   ['CT3',32.8,-17.0],
+  ['CU',37.7,-25.7],  ['CX',-33.0,-56.0], ['CY0',43.7,-60.0],
+  ['D2',-12.0,18.0],  ['D4',16.0,-24.0],  ['D6',-12.1,44.3],
+  ['DL',51.0,10.0],   ['DU',12.0,122.0],  ['E4',31.9,35.2],
+  ['E5',-21.2,-159.8],['EA',40.0,-4.0],   ['EI',53.0,-8.0],
+  ['EK',40.0,45.0],   ['EL',6.0,-10.0],   ['EP',33.0,54.0],
+  ['ER',47.0,29.0],   ['ES',59.0,25.0],   ['ET',10.0,38.0],
+  ['EU',53.0,28.0],   ['EW',53.0,28.0],   ['EX',41.0,75.0],
+  ['EY',39.0,71.0],   ['EZ',38.0,58.0],   ['F',46.0,2.0],
+  ['FK',-21.5,165.5],  ['FM',14.6,-61.0],  ['FO',-17.5,-149.5],
+  ['FP',46.8,-56.2],  ['FR',-21.1,55.5],  ['FW',-14.3,-178.1],
+  ['FY',4.0,-53.0],   ['G',52.0,-1.0],    ['GD',54.2,-4.5],
+  ['GI',54.7,-6.2],   ['GJ',49.2,-2.1],   ['GM',57.0,-4.0],
+  ['GU',49.5,-2.6],   ['GW',52.0,-3.5],   ['H4',-9.6,160.2],
+  ['HA',47.0,19.0],   ['HB',47.0,8.0],    ['HB0',47.1,9.5],
+  ['HC',-2.0,-77.5],  ['HH',19.0,-73.0],  ['HI',19.0,-70.7],
+  ['HK',4.0,-74.0],   ['HL',37.0,127.5],  ['HO',9.0,-80.0],
+  ['HP',9.0,-80.0],   ['HR',15.0,-87.0],  ['HS',15.0,100.0],
+  ['HV',41.9,12.5],   ['HZ',24.0,45.0],   ['I',42.0,12.0],
+  ['IS0',40.0,9.0],   ['J2',11.5,43.1],   ['J3',12.1,-61.7],
+  ['J5',12.0,-15.0],  ['J6',13.9,-60.9],  ['J7',15.3,-61.4],
+  ['J8',13.2,-61.2],  ['JA',36.0,138.0],  ['JT',47.0,104.0],
+  ['JW',78.0,15.0],   ['JY',31.0,36.0],   ['K',37.0,-95.0],
+  ['KG4',20.0,-75.1], ['KH',21.0,-157.0],
+  ['LA',62.0,10.0],   ['LU',-34.0,-64.0], ['LX',49.8,6.1],
+  ['LY',56.0,24.0],   ['LZ',43.0,25.0],
+  ['M',52.0,-1.0],    ['MD',54.2,-4.5],   ['MI',54.7,-6.2],
+  ['MM',57.0,-4.0],   ['MT',58.0,-6.5],   ['MW',52.0,-3.5],
+  ['N',37.0,-95.0],
+  ['OA',-10.0,-76.0], ['OD',33.9,35.5],   ['OE',47.0,14.0],
+  ['OH',62.0,26.0],   ['OK',50.0,15.0],   ['OM',49.0,19.0],
+  ['ON',51.0,4.0],    ['OX',70.0,-45.0],  ['OY',62.0,-7.0],
+  ['OZ',56.0,10.0],
+  ['P2',-6.0,147.0],  ['P4',12.5,-70.0],  ['PA',52.0,5.0],
+  ['PJ2',12.2,-69.0], ['PJ4',12.2,-68.3], ['PY',-10.0,-55.0],
+  ['PZ',4.0,-56.0],   ['R',55.0,40.0],
+  ['S0',26.0,-13.0],  ['S2',23.7,90.4],   ['S5',46.0,15.0],
+  ['S7',-4.7,55.5],   ['S9',0.3,6.7],     ['SM',60.0,15.0],
+  ['SP',52.0,20.0],   ['ST',15.0,32.0],   ['SU',26.0,30.0],
+  ['SV',38.0,24.0],   ['SX',38.0,24.0],
+  ['T2',-8.0,178.0],  ['T30',1.4,173.0],  ['T31',-2.7,-171.7],
+  ['T32',2.0,-157.5], ['T33',3.9,159.6],  ['T5',5.0,46.0],
+  ['T7',43.9,12.5],   ['T9',44.0,17.0],   ['TA',39.0,35.0],
+  ['TF',65.0,-18.0],  ['TG',15.0,-90.0],  ['TI',10.0,-84.0],
+  ['TJ',4.0,12.0],    ['TK',42.0,9.0],    ['TL',7.0,20.0],
+  ['TN',-1.0,15.0],   ['TR',-1.0,12.0],   ['TT',15.0,19.0],
+  ['TU',7.5,-5.5],    ['TY',10.0,2.0],    ['TZ',13.0,-6.0],
+  ['UA',55.0,40.0],   ['UK',41.0,64.0],   ['UN',50.0,68.0],
+  ['UR',49.0,32.0],   ['UT',49.0,32.0],   ['UY',49.0,32.0],
+  ['V2',17.1,-61.8],  ['V3',17.2,-88.8],  ['V4',17.4,-62.8],
+  ['V5',-22.0,17.0],  ['V7',7.1,171.4],   ['V8',4.9,115.0],
+  ['VE',56.0,-96.0],  ['VK',-25.0,135.0], ['VK9',14.2,144.7],
+  ['VP8',-51.7,-59.5],['VP9',32.3,-64.8], ['VQ9',-7.3,72.4],
+  ['VR',22.3,114.2],  ['VU',22.0,78.0],
+  ['W',37.0,-95.0],
+  ['XE',23.0,-102.0], ['XT',12.0,-2.0],   ['XU',12.6,104.9],
+  ['YA',33.0,65.0],   ['YB',0.0,110.0],   ['YI',33.0,44.0],
+  ['YJ',-17.7,168.3], ['YK',35.0,38.0],   ['YL',57.0,25.0],
+  ['YN',12.0,-85.0],  ['YO',46.0,25.0],   ['YS',14.0,-89.0],
+  ['YT',44.0,21.0],   ['YU',44.0,21.0],   ['YV',8.0,-66.0],
+  ['Z2',-19.0,30.0],  ['Z3',41.6,21.7],   ['Z6',42.6,20.9],
+  ['ZA',41.0,20.0],   ['ZB',36.1,-5.4],   ['ZC4',35.1,33.4],
+  ['ZD7',-15.9,-5.7], ['ZF',19.3,-81.4],  ['ZK3',-9.4,-159.8],
+  ['ZL',-41.0,174.0], ['ZP',-23.0,-58.0], ['ZS',-29.0,25.0],
+  ['ZW',-10.0,-55.0],
+].sort((a,b) => b[0].length - a[0].length); // longest prefix first
+
+function dxCallToLatLon(call) {
+  if (!call) return null;
+  const c = call.toUpperCase();
+  // Strip portable suffix (/P /M /QRP etc)
+  const base = c.split('/')[c.startsWith('W') || c.startsWith('K') || c.startsWith('N') || c.startsWith('A') ? 0 : 0];
+  for (const [pfx, lat, lon] of DXCC_PREFIXES) {
+    if (base.startsWith(pfx)) return [lat, lon];
+  }
+  return null;
+}
+
+// Frequency (kHz or MHz) → band key
+function dxFreqToBand(freq) {
+  let f = parseFloat(freq);
+  if (isNaN(f)) return null;
+  if (f > 100) f = f / 1000;   // convert kHz → MHz
+  if (f >= 1.8  && f <= 2.0)   return '160';
+  if (f >= 3.5  && f <= 4.0)   return '80';
+  if (f >= 5.33 && f <= 5.41)  return '60';
+  if (f >= 7.0  && f <= 7.3)   return '40';
+  if (f >= 10.1 && f <= 10.15) return '30';
+  if (f >= 14.0 && f <= 14.35) return '20';
+  if (f >= 18.0 && f <= 18.17) return '17';
+  if (f >= 21.0 && f <= 21.45) return '15';
+  if (f >= 24.89&& f <= 24.99) return '12';
+  if (f >= 28.0 && f <= 29.7)  return '10';
+  if (f >= 50.0 && f <= 54.0)  return '6';
+  return null;
+}
+
+// Great-circle intermediate points — longitudes normalized for continuous traversal
+function gcPoints(lat1,lon1,lat2,lon2,steps=50) {
+  const R=Math.PI/180;
+  const φ1=lat1*R,λ1=lon1*R,φ2=lat2*R,λ2=lon2*R;
+  const dφ=φ2-φ1, dλ=λ2-λ1;
+  const a=Math.sin(dφ/2)**2+Math.cos(φ1)*Math.cos(φ2)*Math.sin(dλ/2)**2;
+  const d=2*Math.asin(Math.sqrt(a));
+  if(d<0.001)return[[lat1,lon1],[lat2,lon2]];
+  const pts=[];
+  for(let i=0;i<=steps;i++){
+    const f=i/steps;
+    const A=Math.sin((1-f)*d)/Math.sin(d), B=Math.sin(f*d)/Math.sin(d);
+    const x=A*Math.cos(φ1)*Math.cos(λ1)+B*Math.cos(φ2)*Math.cos(λ2);
+    const y=A*Math.cos(φ1)*Math.sin(λ1)+B*Math.cos(φ2)*Math.sin(λ2);
+    const z=A*Math.sin(φ1)+B*Math.sin(φ2);
+    pts.push([Math.atan2(z,Math.sqrt(x*x+y*y))/R, Math.atan2(y,x)/R]);
+  }
+  // Normalize longitudes to be continuous (no ±180 jumps) so Leaflet renders correctly
+  for(let i=1;i<pts.length;i++){
+    while(pts[i][1]-pts[i-1][1]>180) pts[i][1]-=360;
+    while(pts[i][1]-pts[i-1][1]<-180) pts[i][1]+=360;
+  }
+  return pts;
+}
+
+// SVG triangle marker icon — anchor at visual center so arcs meet the pin center
+function dxTriIcon(color, flip=false) {
+  const pts = flip ? '8,0 0,14 16,14' : '8,14 0,0 16,0';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="14" viewBox="0 0 16 14"><polygon points="${pts}" fill="${color}" fill-opacity=".9" stroke="rgba(0,0,0,.5)" stroke-width="1.2"/></svg>`;
+  return L.divIcon({
+    html: svg,
+    iconSize:   [16, 14],
+    iconAnchor: [8, 7],   // center of the bounding box — arc meets the triangle center
+    className:  ''
+  });
+}
+
+// Build a Leaflet popup label marker
+function dxLabelMarker(lat, lon, spot, color, side) {
+  const call   = side==='de' ? spot.de : spot.dx;
+  const mode   = spot.mode || '';
+  const freq   = parseFloat(spot.freq||0).toFixed(1);
+  const info   = spot.comment || spot.info || '';
+  const t      = spot.time ? spot.time.substring(11,16)+' UTC' : '';
+  const html = `
+    <div class="dx-spot-label" style="color:${color};border-color:${color};transform:translate(-50%,-110%)">
+      <div class="dx-label-call" style="color:${color};text-shadow:0 0 10px ${color}">${call}</div>
+      <div class="dx-label-info">${freq} MHz  ${mode}  ${info.substring(0,24)}  ${t}</div>
+    </div>`;
+  return L.marker([lat,lon],{
+    icon: L.divIcon({html, iconSize:null, iconAnchor:[0,0], className:''}),
+    interactive:false, zIndexOffset:800
+  });
+}
+
+// ── Init band toggle buttons ──
+function dxInitPanel() {
+  const row = document.getElementById('dx-band-row');
+  if (row.children.length) return; // already built
+  Object.entries(DX_BANDS).forEach(([band, cfg]) => {
+    const btn = document.createElement('button');
+    btn.className = 'dx-band-btn' + (_dxBandsOn.has(band) ? ' on' : '');
+    btn.textContent = cfg.label;
+    btn.style.color = cfg.color;
+    btn.style.borderColor = cfg.color;
+    btn.dataset.band = band;
+    btn.addEventListener('click', () => {
+      if (_dxBandsOn.has(band)) _dxBandsOn.delete(band);
+      else _dxBandsOn.add(band);
+      btn.classList.toggle('on', _dxBandsOn.has(band));
+      dxSaveBandPrefs(_dxBandsOn);
+      dxApplyBandVisibility();
+    });
+    row.appendChild(btn);
+  });
+}
+
+// ── Toggle master DX on/off ──
+function dxToggle() {
+  _dxActive = !_dxActive;
+  const liveBtn  = document.getElementById('dx-live-btn');
+  const bandRow  = document.getElementById('dx-band-row');
+  const spotCt   = document.getElementById('dx-spot-count');
+  const refreshCd= document.getElementById('dx-refresh-cd');
+
+  liveBtn.classList.toggle('active', _dxActive);
+  bandRow.style.display   = _dxActive ? 'flex'   : 'none';
+  spotCt.style.display    = _dxActive ? 'inline' : 'none';
+  refreshCd.style.display = _dxActive ? 'inline' : 'none';
+
+  if (_dxActive) {
+    dxInitPanel();
+    dxFetch();
+    _dxTick = S.dxRefresh;
+    _dxTimer = setInterval(dxTick, 1000);
+  } else {
+    clearInterval(_dxTimer); _dxTimer = null;
+    dxClearLayers();
+    spotCt.textContent  = '';
+    refreshCd.textContent = '';
+  }
+}
+
+function dxTick() {
+  _dxTick--;
+  const cd = document.getElementById('dx-refresh-cd');
+  if (cd) cd.textContent = `↻ ${_dxTick}s`;
+  if (_dxTick <= 0) { dxFetch(); _dxTick = S.dxRefresh; }
+}
+
+// ── Fetch spots via local Python proxy (no CORS issues) ──
+async function dxFetch() {
+  const countEl = document.getElementById('dx-spot-count');
+  if (countEl) countEl.textContent = 'Fetching…';
+
+  let spots = null;
+  let errMsg = '';
+
+  try {
+    const r = await fetch('/spots', { cache: 'no-store' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    if (data && data.error) {
+      errMsg = data.error;
+    } else {
+      spots = Array.isArray(data) ? data : [];
+    }
+  } catch(e) {
+    errMsg = `Proxy error: ${e.message} — is start.py running?`;
+  }
+
+  if (!spots || !spots.length) {
+    if (countEl) { countEl.textContent = errMsg || 'No spots'; countEl.title = errMsg; }
+    return;
+  }
+
+  _dxSpots = spots.filter(s => s.de && s.dx);
+  dxRender();
+}
+
+// ── Render all spots ──
+function dxClearLayers() {
+  const map = window._map; if (!map) return;
+  Object.values(_dxLayers).forEach(lg => map.removeLayer(lg));
+  _dxLayers = {};
+  if (_dxOpenPopup) { map.removeLayer(_dxOpenPopup); _dxOpenPopup = null; }
+}
+
+// World copy offsets — covers ±2 full copies visible at minZoom:2
+const WORLD_COPIES = [-360, 0, 360, 720];
+
+function dxRender() {
+  const map = window._map; if (!map) return;
+  dxClearLayers();
+
+  Object.keys(DX_BANDS).forEach(b => { _dxLayers[b] = L.layerGroup(); });
+
+  let rendered = 0;
+
+  _dxSpots.forEach(spot => {
+    let band = dxFreqToBand(spot.freq);
+    if (!band && spot.band) band = String(spot.band).replace(/m$/i,'').trim();
+    if (!band || !DX_BANDS[band]) return;
+
+    const color = DX_BANDS[band].color;
+
+    const deLoc = (spot.de_lat != null && spot.de_lon != null)
+      ? [spot.de_lat, spot.de_lon] : dxCallToLatLon(spot.de);
+    const dxLoc = (spot.dx_lat != null && spot.dx_lon != null)
+      ? [spot.dx_lat, spot.dx_lon] : dxCallToLatLon(spot.dx);
+    if (!deLoc || !dxLoc) return;
+
+    const [deLat, deLon] = deLoc;
+    const [dxLat, dxLon] = dxLoc;
+
+    // Normalise arc so first point starts in [-180,180]
+    const baseArc = gcPoints(deLat, deLon, dxLat, dxLon);
+    while (baseArc[0][1] >  180) baseArc.forEach(p => p[1] -= 360);
+    while (baseArc[0][1] < -180) baseArc.forEach(p => p[1] += 360);
+
+    const freqMHz = (f => f > 100 ? (f/1000).toFixed(1) : parseFloat(f).toFixed(1))(spot.freq);
+
+    const showPopup = (popDxLon) => {
+      if (_dxOpenPopup) { map.removeLayer(_dxOpenPopup); _dxOpenPopup = null; }
+      const html = `
+        <div class="dx-spot-label" style="color:${color};border-color:${color};transform:translate(-50%,-115%)">
+          <div class="dx-label-call" style="color:${color};text-shadow:0 0 10px ${color}">${spot.dx}</div>
+          <div class="dx-label-info">${freqMHz} MHz  ${spot.mode||''}  ${(spot.comment||'').substring(0,28)}</div>
+          <div class="dx-label-info" style="opacity:.55;margin-top:2px;">de ${spot.de}  ${(spot.time||'').substring(0,12)}</div>
+        </div>`;
+      _dxOpenPopup = L.marker([dxLat, popDxLon], {
+        icon: L.divIcon({html, iconSize:null, iconAnchor:[0,0], className:''}),
+        interactive:false, zIndexOffset:900
+      }).addTo(map);
+    };
+
+    // Draw arc + markers on each world copy
+    WORLD_COPIES.forEach(offset => {
+      const shiftedArc = baseArc.map(([la, lo]) => [la, lo + offset]);
+
+      const line = L.polyline(shiftedArc, {color, weight:1.4, opacity:.55, smoothFactor:1});
+      const deM  = L.marker([deLat, deLon + offset], {icon: dxTriIcon(color, true),  zIndexOffset:100});
+      const dxM  = L.marker([dxLat, dxLon + offset], {icon: dxTriIcon(color, false), zIndexOffset:200});
+
+      const onClick = (e) => { L.DomEvent.stopPropagation(e); showPopup(dxLon + offset); };
+      line.on('click', onClick);
+      deM.on('click', onClick);
+      dxM.on('click', onClick);
+
+      _dxLayers[band].addLayer(line);
+      _dxLayers[band].addLayer(deM);
+      _dxLayers[band].addLayer(dxM);
+    });
+
+    rendered++;
+  });
+
+  dxApplyBandVisibility();
+
+  if (window._dxMapClickHandler) map.off('click', window._dxMapClickHandler);
+  window._dxMapClickHandler = () => {
+    if (_dxOpenPopup) { map.removeLayer(_dxOpenPopup); _dxOpenPopup = null; }
+  };
+  map.on('click', window._dxMapClickHandler);
+
+  document.getElementById('dx-spot-count').textContent = `${rendered} spots`;
+}
+
+function dxApplyBandVisibility() {
+  const map = window._map; if (!map) return;
+  Object.entries(_dxLayers).forEach(([band, lg]) => {
+    if (_dxBandsOn.has(band)) {
+      if (!map.hasLayer(lg)) lg.addTo(map);
+    } else {
+      if (map.hasLayer(lg)) map.removeLayer(lg);
+    }
+  });
+}
+
+// ── Wire DX toggle button (called after initMap) ──
+function dxWireControls() {
+  document.getElementById('dx-live-btn').addEventListener('click', dxToggle);
+}
+
+// ══════════════════════════════════════════
+// BOOT
+// ══════════════════════════════════════════
+initMap();
+dxWireControls();
+dxToggle();   // activate DX on load — fetches immediately, starts 15s refresh cycle
+fetchAll();
+</script>
+</body>
+</html>
