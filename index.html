@@ -180,11 +180,44 @@ header {
 .cond-U { color: var(--text-dim); border-color: var(--border); }
 
 .alerts-list { max-height: 140px; overflow-y: auto; }
-.alert-row { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: .6rem; line-height: 1.4; }
+.alert-row {
+  display: flex; gap: 10px; padding: 6px 0;
+  border-bottom: 1px solid var(--border); font-size: .6rem; line-height: 1.4;
+  cursor: pointer; transition: background .1s;
+}
+.alert-row:hover { background: rgba(255,255,255,.03); }
 .alert-row:last-child { border-bottom: none; }
 .alert-time { color: var(--amber-dim); white-space: nowrap; flex-shrink: 0; font-size: .54rem; }
 .alert-msg { color: var(--text-dim); }
 .alert-msg.warn { color: var(--red); }
+
+/* Alert tooltip */
+#alert-tooltip {
+  display: none;
+  position: fixed;
+  z-index: 9000;
+  max-width: 420px;
+  background: var(--bg2);
+  border: 1px solid var(--border-lit);
+  box-shadow: 0 8px 32px rgba(0,0,0,.8), 0 0 20px rgba(0,0,0,.4);
+  padding: 12px 14px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .58rem;
+  line-height: 1.65;
+  color: var(--text-dim);
+  pointer-events: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+#alert-tooltip .tt-time {
+  font-size: .52rem;
+  color: var(--amber-dim);
+  margin-bottom: 7px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--border);
+  display: block;
+}
+#alert-tooltip.warn { border-color: var(--red); color: var(--text); }
 
 /* ── STATUS BAR ── */
 #status-bar {
@@ -348,6 +381,24 @@ header {
 #dx-spot-count { display:none; font-family:'Orbitron',sans-serif; font-size:.46rem; color:var(--amber-dim); letter-spacing:.08em; white-space:nowrap; }
 #dx-refresh-cd { display:none; font-size:.44rem; color:var(--text-dim); white-space:nowrap; }
 
+/* LOG layer */
+.log-live-btn {
+  font-family:'Orbitron',sans-serif; font-size:.5rem; letter-spacing:.14em;
+  padding:5px 12px; border:1px solid var(--border-lit); background:transparent;
+  color:var(--text-dim); cursor:pointer; transition:all .15s; white-space:nowrap;
+}
+.log-live-btn:hover { border-color:var(--amber-dim); color:var(--amber); }
+.log-live-btn.active { border-color:#44aaff; color:#44aaff; background:rgba(68,170,255,.08); text-shadow:0 0 8px #44aaff; }
+#log-controls { display:none; align-items:center; gap:6px; }
+#log-count { font-family:'Orbitron',sans-serif; font-size:.46rem; color:var(--amber-dim); letter-spacing:.08em; white-space:nowrap; }
+.log-spot-label {
+  position:absolute; font-family:'Share Tech Mono',monospace;
+  background:rgba(4,12,20,.92); border:1px solid; border-radius:2px;
+  padding:5px 9px; pointer-events:none; white-space:nowrap; z-index:700;
+}
+.log-label-call { font-family:'Orbitron',sans-serif; font-size:.68rem; font-weight:700; letter-spacing:.1em; }
+.log-label-info { font-size:.55rem; opacity:.75; margin-top:2px; }
+
 /* DX Spot popup label */
 .dx-spot-label {
   font-family:'Share Tech Mono',monospace; background:rgba(4,8,14,.96);
@@ -370,6 +421,7 @@ header {
 ::-webkit-scrollbar-thumb:hover { background: var(--amber-dim); }
 .wx-frame-bar { font-size: .6rem; color: var(--text-dim); }
 .wx-now { color: var(--yellow); font-family: 'Orbitron', sans-serif; font-size: .54rem; letter-spacing: .08em; }
+.wx-mode-btn.active { border-color: var(--amber); color: var(--amber); background: var(--amber-glow); }
 
 /* ── MAP BACKGROUNDS — kill white polar regions ── */
 .leaflet-container { background: var(--bg-solid) !important; }
@@ -411,6 +463,15 @@ header {
       <div id="dx-band-row"></div>
       <span id="dx-spot-count"></span>
       <span id="dx-refresh-cd"></span>
+      <div class="msel-sep" style="height:18px;margin:0 6px;"></div>
+      <button class="log-live-btn" id="log-live-btn">◉ LOG</button>
+      <div id="log-controls">
+        <label class="ckl" id="log-lines-ckl" title="Toggle connecting lines"><input type="checkbox" id="chk-log-lines" checked> Lines</label>
+        <button class="go-btn" id="log-import-btn" style="padding:4px 10px;font-size:.46rem;">📂 IMPORT</button>
+        <button class="go-btn cs-clear-btn" id="log-clear-btn" style="padding:4px 10px;font-size:.46rem;display:none;">✕ CLEAR</button>
+        <span id="log-count"></span>
+      </div>
+      <input type="file" id="log-file-input" accept=".adi,.adif" style="display:none;">
       <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
         <button class="icon-btn" id="refresh-btn" title="Refresh data" style="width:26px;height:26px;font-size:.85rem;">↻</button>
       </div>
@@ -472,12 +533,17 @@ header {
       <!-- WEATHER -->
       <div class="map-view" id="mv-weather">
         <div class="map-sub-bar">
+          <button class="go-btn wx-mode-btn active" data-mode="radar">⛈ Radar</button>
+          <button class="go-btn wx-mode-btn" data-mode="clouds">☁ Clouds</button>
+          <button class="go-btn wx-mode-btn" data-mode="wind">💨 Wind</button>
+          <button class="go-btn wx-mode-btn" data-mode="temp">🌡 Temp</button>
+          <button class="go-btn wx-mode-btn" data-mode="precip">🌧 Precip</button>
+          <div class="msel-sep" style="height:18px;margin:0 8px;"></div>
           <button class="go-btn" id="wx-prev" style="padding:4px 8px;">⏮</button>
           <button class="go-btn" id="wx-play" style="min-width:78px;padding:4px 10px;">▶ PLAY</button>
           <button class="go-btn" id="wx-next" style="padding:4px 8px;">⏭</button>
           <div id="wx-frame-label" class="wx-frame-bar" style="margin-left:8px;"></div>
-          <label class="ckl" style="margin-left:10px;"><input type="checkbox" id="wx-sat"> IR Sat</label>
-          <div style="margin-left:auto;font-size:.52rem;color:var(--text-dim);">RainViewer Radar</div>
+          <div style="margin-left:auto;font-size:.52rem;color:var(--text-dim);" id="wx-source-label">RainViewer</div>
         </div>
         <div id="wx-wrap"><div id="wx-map"></div></div>
       </div>
@@ -638,7 +704,12 @@ header {
         </div>
       </div>
       <div class="sp-row">
-        <label class="sp-lbl" for="s-autocycle">Map Auto-Cycle</label>
+        <label class="sp-lbl" for="s-owmkey">OpenWeatherMap Key</label>
+        <div class="sp-inline" style="gap:6px;">
+          <input class="sp-input" id="s-owmkey" type="text" placeholder="Paste free API key" maxlength="64" autocomplete="off" spellcheck="false" style="width:180px;">
+          <a href="https://openweathermap.org/api" target="_blank" class="sp-unit" style="color:var(--amber-dim);">Get free key ↗</a>
+        </div>
+      </div>
         <div class="sp-inline">
           <input class="sp-input" id="s-autocycle" type="number" min="10" max="300" value="30">
           <span class="sp-unit">seconds</span>
@@ -646,8 +717,37 @@ header {
       </div>
     </div>
 
+    <!-- LOG -->
+    <div class="sp-section">
+      <div class="sp-section-title">Contact Log</div>
+      <div class="sp-row">
+        <div class="sp-lbl">ADIF Import</div>
+        <div class="sp-inline" style="gap:8px;">
+          <button class="go-btn" id="sp-log-import-btn" style="padding:5px 14px;">📂 Import ADIF File</button>
+          <span id="sp-log-count" style="font-size:.52rem;color:var(--text-dim);"></span>
+        </div>
+      </div>
+      <div class="sp-row">
+        <label class="sp-lbl" for="s-log-filter">Date Filter</label>
+        <div class="sp-inline">
+          <select class="sp-input" id="s-log-filter" style="padding:4px 8px;">
+            <option value="all">All contacts</option>
+            <option value="365">Last year</option>
+            <option value="90">Last 90 days</option>
+            <option value="30">Last 30 days</option>
+          </select>
+        </div>
+      </div>
+      <div class="sp-row" id="sp-log-clear-row" style="display:none;">
+        <div class="sp-lbl"></div>
+        <button class="go-btn cs-clear-btn" id="sp-log-clear-btn" style="padding:5px 14px;">✕ Clear Log</button>
+      </div>
+    </div>
+
   </div>
 </div>
+
+<div id="alert-tooltip"></div>
 
 <script>
 // ══════════════════════════════════════════
@@ -660,6 +760,7 @@ const S = {
   autocycle: parseInt(localStorage.getItem('hfw_autocycle')  || '30'),
   dxRefresh: parseInt(localStorage.getItem('hfw_dxrefresh')  || '60'),
   theme:     localStorage.getItem('hfw_theme')      || 'amber',
+  owmKey:    localStorage.getItem('hfw_owmkey')     || '',
 };
 
 // ══════════════════════════════════════════
@@ -794,6 +895,7 @@ function saveState() {
   localStorage.setItem('hfw_autocycle',  S.autocycle);
   localStorage.setItem('hfw_dxrefresh',  S.dxRefresh);
   localStorage.setItem('hfw_theme',      S.theme);
+  localStorage.setItem('hfw_owmkey',      S.owmKey);
   const badge = document.getElementById('qth-badge');
   if (badge) badge.textContent = (S.callsign||S.grid) ? `${S.callsign||'---'} / ${S.grid||'----'}` : '';
   const hdrCall = document.getElementById('hdr-callsign');
@@ -809,6 +911,7 @@ function openSettings() {
   document.getElementById('s-refresh').value   = S.refresh;
   document.getElementById('s-dxrefresh').value = S.dxRefresh;
   document.getElementById('s-autocycle').value = S.autocycle;
+  document.getElementById('s-owmkey').value    = S.owmKey;
   document.getElementById('settings-overlay').classList.add('open');
   const focusEl = S.callsign ? 's-grid' : 's-call';
   setTimeout(() => document.getElementById(focusEl).focus(), 80);
@@ -824,6 +927,7 @@ function commitSettings() {
   const dxRefChanged = newDxRef !== S.dxRefresh;
   S.callsign = newCall; S.grid = newGrid; S.refresh = newRef;
   S.dxRefresh = newDxRef; S.autocycle = newCycle;
+  S.owmKey = document.getElementById('s-owmkey').value.trim();
   saveState();
 
   if (S.grid && window._map) goToGrid(S.grid);
@@ -1031,11 +1135,65 @@ function renderBandsDerived(sfi,kp){
   document.getElementById('band-tbody').innerHTML=model.map(b=>{const d=calc(b.mSFI,b.mKP,'day'),n=calc(b.mSFI,b.mKP,'night');return`<tr><td><span class="band-name">${b.label}</span></td><td><span class="${condClass(d)}">${condLabel(d)}</span></td><td><span class="${condClass(n)}">${condLabel(n)}</span></td></tr>`;}).join('');
 }
 
-function renderAlerts(data){
-  const el=document.getElementById('alerts-list');
-  if(!data||!data.length){el.innerHTML='<span style="color:var(--green);font-size:.66rem;">✓ No active alerts</span>';document.getElementById('alert-ct').textContent='';return;}
-  const items=data.slice(0,6); document.getElementById('alert-ct').textContent=`(${items.length})`;
-  el.innerHTML=items.map(a=>{const msg=(a.message||'').split('\n')[0]||'';const time=(a.issue_time||'').substring(0,16);const isWarn=/warning|storm|watch/i.test(msg);return`<div class="alert-row"><span class="alert-time">${time}</span><span class="alert-msg${isWarn?' warn':''}">${msg.substring(0,140)}</span></div>`;}).join('');
+// ── Alert tooltip ─────────────────────────────────────────────────────────────
+const _alertTip = document.getElementById('alert-tooltip');
+let   _alertTipTimer = null;
+
+function showAlertTip(e, fullMsg, time, isWarn) {
+  clearTimeout(_alertTipTimer);
+  _alertTip.innerHTML = `<span class="tt-time">${time}</span>${fullMsg.trim()}`;
+  _alertTip.className = isWarn ? 'warn' : '';
+  _alertTip.style.display = 'block';
+  positionAlertTip(e);
+}
+
+function positionAlertTip(e) {
+  const pad = 14;
+  const tw = _alertTip.offsetWidth, th = _alertTip.offsetHeight;
+  let x = e.clientX + pad, y = e.clientY + pad;
+  if (x + tw > window.innerWidth  - pad) x = e.clientX - tw - pad;
+  if (y + th > window.innerHeight - pad) y = e.clientY - th - pad;
+  _alertTip.style.left = `${x}px`;
+  _alertTip.style.top  = `${y}px`;
+}
+
+function hideAlertTip() {
+  _alertTipTimer = setTimeout(() => { _alertTip.style.display = 'none'; }, 80);
+}
+
+function renderAlerts(data) {
+  const el = document.getElementById('alerts-list');
+  if (!data || !data.length) {
+    el.innerHTML = '<span style="color:var(--green);font-size:.66rem;">✓ No active alerts</span>';
+    document.getElementById('alert-ct').textContent = '';
+    return;
+  }
+  const items = data.slice(0, 6);
+  document.getElementById('alert-ct').textContent = `(${items.length})`;
+  el.innerHTML = items.map((a, i) => {
+    const fullMsg  = (a.message || '').trim();
+    const headline = fullMsg.split('\n')[0] || '';
+    const time     = (a.issue_time || '').substring(0, 16);
+    const isWarn   = /warning|storm|watch/i.test(headline);
+    return `<div class="alert-row" data-idx="${i}">`
+      + `<span class="alert-time">${time}</span>`
+      + `<span class="alert-msg${isWarn ? ' warn' : ''}">${headline.substring(0, 100)}</span>`
+      + `</div>`;
+  }).join('');
+
+  // Wire tooltip events — store full messages keyed by index
+  const fullMsgs = items.map(a => ({
+    msg:    (a.message  || '').trim(),
+    time:   (a.issue_time || '').substring(0, 16),
+    isWarn: /warning|storm|watch/i.test((a.message || '').split('\n')[0]),
+  }));
+
+  el.querySelectorAll('.alert-row').forEach(row => {
+    const d = fullMsgs[parseInt(row.dataset.idx)];
+    row.addEventListener('mouseenter', (e) => showAlertTip(e, d.msg, d.time, d.isWarn));
+    row.addEventListener('mousemove',  (e) => positionAlertTip(e));
+    row.addEventListener('mouseleave', ()  => hideAlertTip());
+  });
 }
 
 // ══════════════════════════════════════════
@@ -1300,8 +1458,6 @@ function initGreyMap(){
   const schedGrey=()=>{ if(_greyRaf)return; _greyRaf=requestAnimationFrame(()=>{_greyRaf=null;renderGreyCanvas();}); };
   _greyMap.on('move zoom moveend zoomend',schedGrey);
   resize();
-  updateGreyline(); setInterval(updateGreyline,60000);
-  setInterval(()=>{_greyTick=(_greyTick+1)%60;const el=document.getElementById('grey-next');if(el)el.textContent=`Refreshes in: ${60-_greyTick}s`;},1000);
 }
 function updateGreyline(){_greySun=getSunPosition(new Date());renderGreyCanvas();_greyTick=0;const el=document.getElementById('sun-readout');if(!el)return;const{lat,lon}=_greySun;el.textContent=`☉  Subsolar: ${Math.abs(lat).toFixed(2)}°${lat>=0?'N':'S'}, ${Math.abs(lon).toFixed(2)}°${lon>=0?'E':'W'}   |   Dec: ${lat.toFixed(2)}°`;}
 function renderGreyCanvas(){
@@ -1386,38 +1542,122 @@ function updateAuroraInfo(){
 }
 
 // ══════════════════════════════════════════
-// WEATHER  (RainViewer)
+// WEATHER  (RainViewer Radar + OpenWeatherMap Overlays)
 // ══════════════════════════════════════════
-let _wxMap=null,_wxLayer=null,_wxSatLayer=null,_wxFrames=[],_wxIdx=0,_wxPlaying=false,_wxPlayTimer=null,_wxData=null,_wxInited=false;
+let _wxMap=null, _wxLayer=null, _wxFrames=[], _wxIdx=0,
+    _wxPlaying=false, _wxPlayTimer=null, _wxData=null,
+    _wxInited=false, _wxMode='radar';
+
+// OpenWeatherMap tiles routed through start.py proxy to avoid CORS
+// start.py /owm/ endpoint forwards to tile.openweathermap.org
+const OWM_URL = '/owm/{layer}/{z}/{x}/{y}.png?appid={key}';
+
+const WX_MODES = {
+  radar:  { label: 'RainViewer Radar',   type: 'rainviewer' },
+  clouds: { label: 'OWM Cloud Cover',    type: 'owm', layer: 'clouds_new',       opacity: 0.70 },
+  wind:   { label: 'OWM Wind Speed',     type: 'owm', layer: 'wind_new',         opacity: 0.75 },
+  temp:   { label: 'OWM Temperature',    type: 'owm', layer: 'temp_new',         opacity: 0.65 },
+  precip: { label: 'OWM Precipitation',  type: 'owm', layer: 'precipitation_new',opacity: 0.75 },
+};
+
 async function initWeatherMap(){
-  if(_wxInited)return;_wxInited=true;
-  const center=S.grid?gridToLatLng(S.grid):[48,-116];
-  _wxMap=L.map('wx-map',{center,zoom:5});
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap contributors © CARTO',subdomains:'abcd',maxZoom:19}).addTo(_wxMap);
-  document.getElementById('wx-prev').addEventListener('click',()=>setWxFrame(_wxIdx-1));
-  document.getElementById('wx-next').addEventListener('click',()=>setWxFrame(_wxIdx+1));
-  document.getElementById('wx-play').addEventListener('click',toggleWxPlay);
-  document.getElementById('wx-sat').addEventListener('change',toggleWxSat);
+  if(_wxInited)return; _wxInited=true;
+  const center = S.grid ? gridToLatLng(S.grid) : [48,-116];
+  _wxMap = L.map('wx-map', {center, zoom:5, minZoom:2});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    {attribution:'© OpenStreetMap contributors © CARTO', subdomains:'abcd', maxZoom:19}
+  ).addTo(_wxMap);
+
+  document.getElementById('wx-prev').addEventListener('click', () => setWxFrame(_wxIdx - 1));
+  document.getElementById('wx-next').addEventListener('click', () => setWxFrame(_wxIdx + 1));
+  document.getElementById('wx-play').addEventListener('click', toggleWxPlay);
+
+  document.querySelectorAll('.wx-mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.wx-mode-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      setWxMode(btn.dataset.mode);
+    });
+  });
+
   await fetchWeatherData();
-  if(_wxFrames.length)setWxFrame(_wxFrames.length-1);
+  if(_wxFrames.length) setWxFrame(_wxFrames.length - 1);
 }
+
 async function fetchWeatherData(){
-  _wxData=await safeFetch('https://api.rainviewer.com/public/weather-maps.json');
-  if(!_wxData){const l=document.getElementById('wx-frame-label');if(l)l.textContent='RainViewer unavailable';return;}
-  _wxFrames=[...(_wxData.radar?.past||[]),...(_wxData.radar?.nowcast||[])];
+  _wxData = await safeFetch('https://api.rainviewer.com/public/weather-maps.json');
+  const lbl = document.getElementById('wx-frame-label');
+  if(!_wxData){ if(lbl) lbl.textContent = 'Radar unavailable'; }
+  else { _wxFrames = [...(_wxData.radar?.past || []), ...(_wxData.radar?.nowcast || [])]; }
 }
+
+function setWxMode(mode){
+  if(_wxPlaying) toggleWxPlay();
+  _wxMode = mode;
+  if(_wxLayer){ _wxMap.removeLayer(_wxLayer); _wxLayer = null; }
+
+  const cfg = WX_MODES[mode];
+  const lbl = document.getElementById('wx-frame-label');
+  document.getElementById('wx-source-label').textContent = cfg.label;
+
+  // Show/hide animation controls — only radar supports animation
+  const hasAnim = cfg.type === 'rainviewer';
+  ['wx-prev','wx-play','wx-next'].forEach(id => {
+    document.getElementById(id).style.display = hasAnim ? '' : 'none';
+  });
+
+  if(cfg.type === 'owm'){
+    const key = S.owmKey || '';
+    if(!key){
+      if(lbl) lbl.innerHTML = `<span style="color:var(--red)">OWM API key required — add in ⚙ Settings</span>`;
+      return;
+    }
+    if(lbl) lbl.textContent = 'Updates hourly — openweathermap.org';
+    const url = OWM_URL.replace('{layer}', cfg.layer).replace('{key}', key);
+    _wxLayer = L.tileLayer(url.replace(/{z}/g,'{z}').replace(/{x}/g,'{x}').replace(/{y}/g,'{y}'),
+      {tileSize:256, opacity: cfg.opacity, attribution:'OpenWeatherMap', zIndex:2}
+    ).addTo(_wxMap);
+  } else {
+    // Radar
+    _wxFrames = _wxData ? [...(_wxData.radar?.past || []), ...(_wxData.radar?.nowcast || [])] : [];
+    if(_wxFrames.length){ setWxFrame(_wxFrames.length - 1); }
+    else if(lbl) lbl.textContent = 'Radar unavailable';
+  }
+}
+
 function setWxFrame(idx){
-  if(!_wxMap||!_wxFrames.length||!_wxData)return;
-  _wxIdx=Math.max(0,Math.min(_wxFrames.length-1,idx));
-  const frame=_wxFrames[_wxIdx],host=_wxData.host||'https://tilecache.rainviewer.com';
-  if(_wxLayer)_wxMap.removeLayer(_wxLayer);
-  _wxLayer=L.tileLayer(`${host}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`,{tileSize:256,opacity:.72,attribution:'RainViewer',zIndex:2}).addTo(_wxMap);
-  const t=new Date(frame.time*1000),pastLen=_wxData.radar?.past?.length||0,isFore=_wxIdx>=pastLen;
-  const timeStr=`${String(t.getUTCHours()).padStart(2,'0')}:${String(t.getUTCMinutes()).padStart(2,'0')} UTC`;
-  const lbl=document.getElementById('wx-frame-label');if(lbl)lbl.innerHTML=isFore?`<span class="wx-now">▶ FORECAST ${timeStr}</span>`:`Frame ${_wxIdx+1}/${pastLen} — ${timeStr}`;
+  if(!_wxMap || !_wxFrames.length || !_wxData) return;
+  _wxIdx = Math.max(0, Math.min(_wxFrames.length - 1, idx));
+  const frame = _wxFrames[_wxIdx];
+  const host  = _wxData.host || 'https://tilecache.rainviewer.com';
+
+  if(_wxLayer) _wxMap.removeLayer(_wxLayer);
+  _wxLayer = L.tileLayer(
+    `${host}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`,
+    {tileSize:256, opacity:0.72, attribution:'RainViewer', zIndex:2}
+  ).addTo(_wxMap);
+
+  const t = new Date(frame.time * 1000);
+  const timeStr = `${String(t.getUTCHours()).padStart(2,'0')}:${String(t.getUTCMinutes()).padStart(2,'0')} UTC`;
+  const pastLen = _wxData.radar?.past?.length || 0;
+  const isFore  = _wxIdx >= pastLen;
+  const lbl = document.getElementById('wx-frame-label');
+  if(lbl) lbl.innerHTML = isFore
+    ? `<span class="wx-now">▶ FORECAST ${timeStr}</span>`
+    : `Frame ${_wxIdx + 1}/${_wxFrames.length} — ${timeStr}`;
 }
-function toggleWxPlay(){_wxPlaying=!_wxPlaying;const btn=document.getElementById('wx-play');if(_wxPlaying){btn.textContent='⏸ PAUSE';_wxPlayTimer=setInterval(()=>setWxFrame((_wxIdx+1)%_wxFrames.length),600);}else{btn.textContent='▶ PLAY';clearInterval(_wxPlayTimer);}}
-function toggleWxSat(e){if(!_wxMap||!_wxData)return;if(e.target.checked){const sat=_wxData.satellite?.infrared;if(!sat?.length){e.target.checked=false;return;}const frame=sat[sat.length-1],host=_wxData.host||'https://tilecache.rainviewer.com';_wxSatLayer=L.tileLayer(`${host}${frame.path}/256/{z}/{x}/{y}/0/0_0.png`,{tileSize:256,opacity:.55,attribution:'RainViewer',zIndex:3}).addTo(_wxMap);}else{if(_wxSatLayer){_wxMap.removeLayer(_wxSatLayer);_wxSatLayer=null;}}}
+
+function toggleWxPlay(){
+  _wxPlaying = !_wxPlaying;
+  const btn = document.getElementById('wx-play');
+  if(_wxPlaying){
+    btn.textContent = '⏸ PAUSE';
+    _wxPlayTimer = setInterval(() => setWxFrame((_wxIdx + 1) % _wxFrames.length), 600);
+  } else {
+    btn.textContent = '▶ PLAY';
+    clearInterval(_wxPlayTimer);
+  }
+}
 
 // ══════════════════════════════════════════
 // DX CLUSTER
@@ -1839,12 +2079,273 @@ function dxWireControls() {
 }
 
 // ══════════════════════════════════════════
+// LOG LAYER  (ADIF import → map dots + arcs)
+// ══════════════════════════════════════════
+
+let _logActive    = false;
+let _logContacts  = [];        // parsed QSOs
+let _logLayers    = { dots: null, lines: null };
+let _logOpenPopup = null;
+let _logLinesOn   = true;
+
+// ── ADIF parser ──────────────────────────────────────────────────────────────
+function parseAdif(text) {
+  const contacts = [];
+  // Split on <EOR> (case-insensitive)
+  const records = text.split(/<eor>/i);
+  for (const rec of records) {
+    if (!rec.trim()) continue;
+    const fields = {};
+    // Match <FIELD:length>value
+    const re = /<([A-Z_0-9]+):(\d+)(?::[^>]*)?>([^<]*)/gi;
+    let m;
+    while ((m = re.exec(rec)) !== null) {
+      const key = m[1].toUpperCase();
+      const len = parseInt(m[2]);
+      fields[key] = m[3].substring(0, len).trim();
+    }
+    if (!fields.CALL) continue;
+    contacts.push(fields);
+  }
+  return contacts;
+}
+
+// ── Resolve lat/lon from a QSO record ───────────────────────────────────────
+function logQsoLatLon(qso) {
+  // 1. Grid square in the ADIF record
+  if (qso.GRIDSQUARE && qso.GRIDSQUARE.length >= 4) {
+    try { return gridToLatLng(qso.GRIDSQUARE); } catch(e) {}
+  }
+  // 2. Prefix table lookup
+  return dxCallToLatLon(qso.CALL);
+}
+
+// ── Band color — reuse DX band colors, fall back to blue ────────────────────
+function logBandColor(band) {
+  if (!band) return '#44aaff';
+  const b = band.toLowerCase().replace('m','').trim();
+  const entry = DX_BANDS[b];
+  return entry ? entry.color : '#44aaff';
+}
+
+// ── Clear all log layers from map ───────────────────────────────────────────
+function logClearLayers() {
+  const map = window._map; if (!map) return;
+  Object.values(_logLayers).forEach(lg => { if (lg) map.removeLayer(lg); });
+  _logLayers = { dots: null, lines: null };
+  if (_logOpenPopup) { map.removeLayer(_logOpenPopup); _logOpenPopup = null; }
+}
+
+
+function logRender() {
+  const map = window._map; if (!map) return;
+  logClearLayers();
+  if (!_logActive || !_logContacts.length) return;
+
+  const filterDays = parseInt(document.getElementById('s-log-filter').value) || 0;
+  const cutoff = filterDays ? Date.now() - filterDays * 86400000 : 0;
+
+  const myLoc = S.grid ? gridToLatLng(S.grid) : null;
+  // Fallback: derive home location from MY_GRIDSQUARE field in the ADIF records
+  let homeLoc = myLoc;
+  if (!homeLoc && _logContacts.length) {
+    for (const qso of _logContacts) {
+      const g = qso.MY_GRIDSQUARE || qso.MY_GRID;
+      if (g && g.length >= 4) {
+        try { homeLoc = gridToLatLng(g); break; } catch(e) {}
+      }
+    }
+    if (homeLoc) console.log('[LOG] Using MY_GRIDSQUARE from ADIF as home location');
+  }
+  console.log('[LOG] homeLoc resolved:', homeLoc);
+  if (!homeLoc) {
+    document.getElementById('log-count').textContent = 'Set home grid in settings';
+    console.warn('[LOG] No home location available — set grid square in ⚙ settings');
+    return;
+  }
+
+  const dotGroup  = L.layerGroup();
+  const lineGroup = L.layerGroup();
+  let rendered = 0, skippedDate = 0, skippedCoord = 0;
+
+  for (const qso of _logContacts) {
+    if (cutoff && qso.QSO_DATE) {
+      const d = qso.QSO_DATE;
+      const ts = new Date(`${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)}`).getTime();
+      if (ts < cutoff) { skippedDate++; continue; }
+    }
+
+    const loc = logQsoLatLon(qso);
+    if (!loc) { skippedCoord++; continue; }
+
+    const [lat, lon] = loc;
+    const color = logBandColor(qso.BAND);
+    const freqDisplay = qso.FREQ ? `${parseFloat(qso.FREQ).toFixed(3)} MHz` : (qso.BAND || '');
+    const dateStr = qso.QSO_DATE
+      ? `${qso.QSO_DATE.slice(0,4)}-${qso.QSO_DATE.slice(4,6)}-${qso.QSO_DATE.slice(6,8)}`
+      : '';
+    const timeStr = qso.TIME_ON ? `${qso.TIME_ON.slice(0,2)}:${qso.TIME_ON.slice(2,4)}z` : '';
+    const rst = (qso.RST_SENT && qso.RST_RCVD) ? `${qso.RST_SENT}/${qso.RST_RCVD}` : '';
+
+    const showPopup = (popLon) => {
+      if (_logOpenPopup) { map.removeLayer(_logOpenPopup); _logOpenPopup = null; }
+      const html = `
+        <div class="log-spot-label" style="color:${color};border-color:${color};transform:translate(-50%,-115%)">
+          <div class="log-label-call" style="color:${color};text-shadow:0 0 10px ${color}">${qso.CALL}</div>
+          <div class="log-label-info">${freqDisplay}  ${qso.MODE||''}  ${rst}</div>
+          <div class="log-label-info" style="opacity:.55;margin-top:2px;">${dateStr}  ${timeStr}</div>
+        </div>`;
+      _logOpenPopup = L.marker([lat, popLon], {
+        icon: L.divIcon({ html, iconSize: null, iconAnchor: [0,0], className: '' }),
+        interactive: false, zIndexOffset: 900
+      }).addTo(map);
+    };
+
+    WORLD_COPIES.forEach(offset => {
+      // Lines drawn first so dots render on top
+      if (_logLinesOn && homeLoc) {
+        const arcPts = gcPoints(homeLoc[0], homeLoc[1], lat, lon + offset);
+        const line = L.polyline(arcPts, { color, weight: 1.2, opacity: .4, smoothFactor: 1 });
+        line.on('click', (e) => { L.DomEvent.stopPropagation(e); showPopup(lon + offset); });
+        lineGroup.addLayer(line);
+      }
+
+      // circleMarker renders as a pure SVG circle exactly at [lat,lon] — no icon offset
+      const dot = L.circleMarker([lat, lon + offset], {
+        radius: 5, color: 'rgba(0,0,0,0.5)', weight: 1.5,
+        fillColor: color, fillOpacity: 0.9
+      });
+      dot.on('click', (e) => { L.DomEvent.stopPropagation(e); showPopup(lon + offset); });
+      dotGroup.addLayer(dot);
+    });
+
+    rendered++;
+  }
+
+  console.log(`[LOG] Rendered: ${rendered}, skipped (date): ${skippedDate}, skipped (no coords): ${skippedCoord}`);
+
+  _logLayers.lines = lineGroup.addTo(map);
+  _logLayers.dots  = dotGroup.addTo(map);
+
+  document.getElementById('log-count').textContent = `${rendered} contacts`;
+  document.getElementById('sp-log-count').textContent = `${rendered} contacts loaded`;
+
+  if (window._logMapClickHandler) map.off('click', window._logMapClickHandler);
+  window._logMapClickHandler = () => {
+    if (_logOpenPopup) { map.removeLayer(_logOpenPopup); _logOpenPopup = null; }
+  };
+  map.on('click', window._logMapClickHandler);
+}
+
+// ── Load contacts from localStorage on startup ───────────────────────────────
+function logLoadStored() {
+  try {
+    const raw = localStorage.getItem('hfw_log');
+    if (raw) { _logContacts = JSON.parse(raw); updateLogUI(); }
+  } catch(e) { _logContacts = []; }
+}
+
+function updateLogUI() {
+  const hasLog = _logContacts.length > 0;
+  document.getElementById('log-clear-btn').style.display    = hasLog ? '' : 'none';
+  document.getElementById('sp-log-clear-row').style.display = hasLog ? '' : 'none';
+  document.getElementById('sp-log-count').textContent       = hasLog ? `${_logContacts.length} contacts loaded` : '';
+  document.getElementById('log-count').textContent          = hasLog && _logActive ? `${_logContacts.length} contacts` : '';
+}
+
+// ── Toggle LOG layer on/off ──────────────────────────────────────────────────
+function logToggle() {
+  _logActive = !_logActive;
+  const btn      = document.getElementById('log-live-btn');
+  const controls = document.getElementById('log-controls');
+  btn.classList.toggle('active', _logActive);
+  controls.style.display = _logActive ? 'flex' : 'none';
+  if (_logActive) { logRender(); }
+  else { logClearLayers(); }
+}
+
+// ── File import handler ──────────────────────────────────────────────────────
+function logHandleFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const text = e.target.result;
+    console.log('[LOG] File size:', text.length, 'bytes');
+    console.log('[LOG] First 300 chars:', text.substring(0, 300));
+
+    const contacts = parseAdif(text);
+    console.log('[LOG] Parsed contacts:', contacts.length);
+    if (contacts.length > 0) {
+      console.log('[LOG] First contact fields:', JSON.stringify(contacts[0]));
+    }
+
+    if (!contacts.length) {
+      alert('No contacts found in that file. Make sure it is a valid ADIF (.adi or .adif) file.');
+      return;
+    }
+    _logContacts = contacts;
+    try { localStorage.setItem('hfw_log', JSON.stringify(_logContacts)); } catch(e) {}
+    updateLogUI();
+    if (_logActive) logRender();
+    if (!_logActive) logToggle();
+  };
+  reader.readAsText(file);
+}
+
+// ── Wire all log controls ────────────────────────────────────────────────────
+function logWireControls() {
+  // Toggle button
+  document.getElementById('log-live-btn').addEventListener('click', logToggle);
+
+  // File input (hidden)
+  const fileInput = document.getElementById('log-file-input');
+  fileInput.addEventListener('change', (e) => { logHandleFile(e.target.files[0]); e.target.value=''; });
+
+  // Import buttons (toolbar + settings)
+  document.getElementById('log-import-btn').addEventListener('click', () => fileInput.click());
+  document.getElementById('sp-log-import-btn').addEventListener('click', () => fileInput.click());
+
+  // Clear buttons
+  const clearLog = () => {
+    _logContacts = [];
+    localStorage.removeItem('hfw_log');
+    logClearLayers();
+    updateLogUI();
+  };
+  document.getElementById('log-clear-btn').addEventListener('click', clearLog);
+  document.getElementById('sp-log-clear-btn').addEventListener('click', clearLog);
+
+  // Lines toggle
+  document.getElementById('chk-log-lines').addEventListener('change', (e) => {
+    _logLinesOn = e.target.checked;
+    if (_logActive) logRender();
+  });
+
+  // Date filter change
+  document.getElementById('s-log-filter').addEventListener('change', () => {
+    if (_logActive) logRender();
+  });
+}
+
+// ══════════════════════════════════════════
 // BOOT
 // ══════════════════════════════════════════
 initMap();
 dxWireControls();
-dxToggle();   // activate DX on load — fetches immediately, starts 15s refresh cycle
+logWireControls();
+logLoadStored();
+dxToggle();
 fetchAll();
+
+// Solar position updates every 60s regardless of active view
+// This keeps the greyline current for 24/7 unattended display
+updateGreyline();
+setInterval(updateGreyline, 60000);
+setInterval(() => {
+  _greyTick = (_greyTick + 1) % 60;
+  const el = document.getElementById('grey-next');
+  if (el) el.textContent = `Refreshes in: ${60 - _greyTick}s`;
+}, 1000);
 </script>
 </body>
 </html>
