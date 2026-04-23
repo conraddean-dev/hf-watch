@@ -432,6 +432,176 @@ header {
 /* ── MAP BACKGROUNDS — kill white polar regions ── */
 .leaflet-container { background: var(--bg-solid) !important; }
 .map-views, #map-wrap, #grey-wrap, #wx-wrap { background: var(--bg-solid); }
+
+/* ════════════════════════════════════════════
+   MOBILE / RESPONSIVE LAYOUT
+   ════════════════════════════════════════════ */
+
+/* Sidebar toggle button — hidden on desktop */
+#sidebar-toggle {
+  display: none;
+  font-family: 'Orbitron', sans-serif; font-size: .5rem; letter-spacing: .12em;
+  padding: 5px 11px; background: var(--amber-glow);
+  border: 1px solid var(--amber-dim); color: var(--amber);
+  cursor: pointer; transition: all .15s; white-space: nowrap; flex-shrink: 0;
+  touch-action: manipulation;
+}
+#sidebar-toggle.open { border-color: var(--amber); background: rgba(255,170,0,.22); }
+
+/* Mobile sidebar close button — hidden on desktop */
+#sidebar-close {
+  display: none;
+  position: absolute; top: 10px; right: 12px;
+  font-family: 'Orbitron', sans-serif; font-size: .44rem; letter-spacing: .1em;
+  background: transparent; border: 1px solid var(--border-lit);
+  color: var(--text-dim); cursor: pointer; padding: 4px 10px;
+  touch-action: manipulation; z-index: 1;
+}
+#sidebar-close:hover { border-color: var(--amber-dim); color: var(--amber); }
+
+/* Sidebar backdrop — hidden on desktop */
+#sidebar-backdrop {
+  display: none;
+  position: fixed; inset: 0; z-index: 490;
+  background: rgba(0,0,0,.6);
+}
+#sidebar-backdrop.open { display: block; }
+
+/* ── Tablet (≤960px): sidebar becomes a hidden right-side drawer ── */
+@media (max-width: 960px) {
+
+  header { padding: 0 10px 0 12px; }
+
+  /* Show sidebar toggle button */
+  #sidebar-toggle { display: flex; align-items: center; }
+
+  /* Show in-panel close button */
+  #sidebar-close { display: block; }
+
+  /* Hide developer credit — it's pinned to the sidebar position which
+     is now off-screen; credit lives inside the sidebar instead */
+  #dev-credit { display: none !important; }
+
+  /* Sidebar: remove from layout flow, hide off right edge */
+  .solar-sidebar {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: 320px; max-width: 90vw;
+    z-index: 500;
+    transform: translateX(110%);
+    transition: transform .28s cubic-bezier(.4,0,.2,1);
+    box-shadow: -10px 0 50px rgba(0,0,0,.8);
+    border-left: 1px solid var(--border-lit);
+    overflow-y: auto;
+  }
+  .solar-sidebar.open { transform: translateX(0); }
+
+  /* Band row scrollable */
+  #dx-band-row { overflow-x: auto; flex-wrap: nowrap; max-width: 220px; }
+
+  /* Settings: full width */
+  .settings-panel {
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+  }
+}
+
+/* ── Mobile (≤640px): compress header and toolbar ── */
+@media (max-width: 640px) {
+  html { font-size: 20px; }
+
+  /* Compact header — logo only, hide callsign and separator to prevent overlap */
+  header { height: 54px; padding: 0 8px 0 10px; }
+  .logo { font-size: .88rem; letter-spacing: .18em; }
+  .logo sup { font-size: .34rem; }
+  .header-dev-warning { display: none !important; }
+  #hdr-callsign { display: none !important; }
+  .hdr-sep { display: none !important; }
+  #clock-time { font-size: .88rem; letter-spacing: .04em; }
+  #clock-date, #clock-local { display: none; }
+
+  /* Toolbar: single horizontally scrollable row */
+  .map-sel-bar {
+    height: auto; min-height: 44px; padding: 4px 8px;
+    overflow-x: auto; flex-wrap: nowrap; gap: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .map-sel-bar::-webkit-scrollbar { height: 0; }
+
+  /* Touch-friendly button sizing */
+  .msel-btn    { padding: 7px 10px; font-size: .46rem; letter-spacing: .1em; }
+  .msel-play   { padding: 7px 10px; font-size: .46rem; }
+  .msel-sep    { flex-shrink: 0; }
+  .dx-live-btn, .log-live-btn { padding: 7px 10px; }
+
+  /* Map sub-bars: scrollable */
+  .map-sub-bar {
+    height: auto; min-height: 42px; padding: 4px 8px;
+    overflow-x: auto; flex-wrap: nowrap; gap: 6px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .map-sub-bar::-webkit-scrollbar { height: 0; }
+
+  /* Callsign lookup */
+  .cs-input { width: 76px; }
+  #grid-readout { display: none; }
+
+  /* Aurora: stack vertically on portrait */
+  #mv-aurora .aurora-dual { flex-direction: column; }
+
+  /* Band filter */
+  #dx-band-row { max-width: 150px; overflow-x: auto; }
+  .dx-band-btn { padding: 4px 7px; font-size: .41rem; }
+
+  /* Log controls */
+  #log-import-btn { font-size: .41rem; padding: 4px 7px; }
+  #log-clear-btn  { font-size: .41rem; padding: 4px 7px; }
+  #log-count { display: none; }
+
+  /* Settings panel: full screen single column */
+  .settings-panel {
+    width: 100vw; max-width: 100vw;
+    top: 0; left: 0;
+    transform: none;
+    max-height: 100dvh;
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+
+  /* Status bar: minimal — dot + message only */
+  #status-right span:not(#qth-badge) { display: none; }
+}
+
+/* ── Portrait phones (≤480px): sidebar becomes bottom sheet ── */
+@media (max-width: 480px) {
+  .solar-sidebar {
+    top: auto !important;
+    left: 0 !important; right: 0 !important; bottom: 0 !important;
+    width: 100vw !important; max-width: 100vw !important;
+    height: 78vh;
+    transform: translateY(110%) !important;
+    border-left: none !important;
+    border-top: 2px solid var(--border-lit);
+    border-radius: 12px 12px 0 0;
+    overflow-y: auto;
+  }
+  .solar-sidebar.open { transform: translateY(0) !important; }
+
+  /* Reposition close button to top-right of bottom sheet */
+  #sidebar-close { top: 10px; right: 12px; }
+}
+
+/* ── Touch targets — all interactive elements on touch devices ── */
+@media (hover: none) {
+  button, .go-btn, .msel-btn, .msel-play,
+  .dx-live-btn, .log-live-btn, .icon-btn,
+  .dx-band-btn, .wx-mode-btn {
+    touch-action: manipulation;
+  }
+  .ckl { touch-action: manipulation; min-height: 36px; align-items: center; }
+  /* Allow horizontal scroll on toolbars without triggering map pan */
+  .map-sel-bar, .map-sub-bar { touch-action: pan-x pan-y; }
+}
 </style>
 </head>
 <body>
@@ -440,7 +610,7 @@ header {
 <header>
   <div style="display:flex;flex-direction:column;gap:2px;padding-right:24px;border-right:1px solid var(--border-lit);flex-shrink:0;">
     <div class="logo" style="border-right:none;padding-right:0;">HF·WATCH<sup>v0.6.1</sup></div>
-    <div style="font-family:'Share Tech Mono',monospace;font-size:.3rem;color:#cc2222;letter-spacing:.1em;line-height:1;">UNDER DEVELOPMENT · SUBJECT TO CHANGE</div>
+    <div class="header-dev-warning" style="font-family:'Share Tech Mono',monospace;font-size:.3rem;color:#cc2222;letter-spacing:.1em;line-height:1;">UNDER DEVELOPMENT · SUBJECT TO CHANGE</div>
   </div>
   <div id="hdr-callsign" class="empty">⚙ SET CALLSIGN</div>
   <div class="hdr-sep"></div>
@@ -481,6 +651,7 @@ header {
       </div>
       <input type="file" id="log-file-input" accept=".adi,.adif" style="display:none;">
       <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+        <button id="sidebar-toggle" title="Toggle solar data panel">☀ DATA</button>
         <button class="icon-btn" id="refresh-btn" title="Refresh data" style="width:26px;height:26px;font-size:.85rem;">↻</button>
       </div>
     </div>
@@ -549,8 +720,12 @@ header {
     </div><!-- /map-views -->
   </div><!-- /map-column -->
 
+  <!-- Sidebar backdrop (mobile) -->
+  <div id="sidebar-backdrop"></div>
+
   <!-- SOLAR SIDEBAR -->
   <div class="solar-sidebar">
+    <button id="sidebar-close" onclick="document.querySelector('.solar-sidebar').classList.remove('open');document.getElementById('sidebar-backdrop').classList.remove('open');document.getElementById('sidebar-toggle').classList.remove('open');document.getElementById('sidebar-toggle').textContent='☀ DATA';">✕ CLOSE</button>
     <div class="sb-inner">
 
       <div class="sb-section">
@@ -622,7 +797,7 @@ header {
 
   </div><!-- /solar-sidebar -->
 
-  <div style="position:fixed;bottom:24px;right:0;width:22%;min-width:240px;max-width:380px;text-align:right;padding:3px 14px;border-top:1px solid var(--border);background:var(--bg2);z-index:49;">
+  <div id="dev-credit" style="position:fixed;bottom:24px;right:0;width:22%;min-width:240px;max-width:380px;text-align:right;padding:3px 14px;border-top:1px solid var(--border);background:var(--bg2);z-index:49;">
     <span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:var(--text-dim);letter-spacing:.14em;">Developed by KM7DIM</span>
   </div>
 
@@ -2526,8 +2701,50 @@ function logWireControls() {
 }
 
 // ══════════════════════════════════════════
-// BOOT
+// MOBILE SIDEBAR TOGGLE
 // ══════════════════════════════════════════
+(function() {
+  const sidebar  = document.querySelector('.solar-sidebar');
+  const toggle   = document.getElementById('sidebar-toggle');
+  const backdrop = document.getElementById('sidebar-backdrop');
+
+  function openSidebar() {
+    sidebar.classList.add('open');
+    backdrop.classList.add('open');
+    toggle.classList.add('open');
+    toggle.textContent = '✕ DATA';
+  }
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    backdrop.classList.remove('open');
+    toggle.classList.remove('open');
+    toggle.textContent = '☀ DATA';
+  }
+
+  toggle.addEventListener('click', () =>
+    sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+  );
+  backdrop.addEventListener('click', closeSidebar);
+
+  // Orientation change: close drawer and invalidate maps
+  window.addEventListener('orientationchange', () => {
+    closeSidebar();
+    setTimeout(() => {
+      window._map?.invalidateSize();
+      _wxMap?.invalidateSize();
+    }, 350);
+  });
+
+  // Resize: restore desktop state and invalidate maps
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 960) closeSidebar();
+    clearTimeout(window._resizeTimer);
+    window._resizeTimer = setTimeout(() => {
+      window._map?.invalidateSize();
+      _wxMap?.invalidateSize();
+    }, 200);
+  });
+})();
 initMap();
 dxWireControls();
 logWireControls();
