@@ -439,7 +439,7 @@ header {
 <!-- HEADER -->
 <header>
   <div style="display:flex;flex-direction:column;gap:2px;padding-right:24px;border-right:1px solid var(--border-lit);flex-shrink:0;">
-    <div class="logo" style="border-right:none;padding-right:0;">HF·WATCH<sup>v0.6.0</sup></div>
+    <div class="logo" style="border-right:none;padding-right:0;">HF·WATCH<sup>v0.6.1</sup></div>
     <div style="font-family:'Share Tech Mono',monospace;font-size:.3rem;color:#cc2222;letter-spacing:.1em;line-height:1;">UNDER DEVELOPMENT · SUBJECT TO CHANGE</div>
   </div>
   <div id="hdr-callsign" class="empty">⚙ SET CALLSIGN</div>
@@ -777,26 +777,19 @@ header {
 //   MINOR — new features, backward compatible
 //   PATCH — bug fixes, tweaks, minor adjustments
 //
-// v0.6.0 (2026-04-23)
-//   - QRZ Logbook API integration (FETCH with pagination, proxied via start.py)
-//   - QRZ API key field in settings with password masking + show/hide toggle
-//   - OWM API key masked with show/hide toggle, auto-re-masked on panel close
-//   - API keys confirmed stored only in browser localStorage, never on server
-//   - DX markers changed from triangles to diamonds (matches ◈ DX button icon)
-//   - Diamond anchor fix: line-height:0 wrapper eliminates inline baseline gap
-//   - Settings panel two-column grid layout — all sections visible without scrolling
-//   - Broken sp-row for Map Auto-Cycle repaired (missing closing div)
-//   - Settings panel centered on screen via transform: translate(-50%,-50%)
-//   - Greyline tab removed — overlay available via Grid Map checkbox
-//   - Grid + Labels merged into single Grid checkbox
-//   - Solar sidebar tooltips with ham-relevant propagation descriptions
-//   - NOAA alert hover tooltips reuse styled alert tooltip engine
-//   - Secondary text-dim brightened across all themes for readability
-//   - Weather modes: Radar (RainViewer), Clouds/Wind/Temp/Precip (OWM proxy)
-//   - start.py: /qrz-log POST proxy, /owm/ GET tile proxy, /spots DX proxy
+// v0.6.1 (2026-04-23)
+//   - Grid label formula fixed: normalized longitude to [-180,180) before Maidenhead calculation
+//   - Grid label world-copy wrap fixed: labels now correct on all map copies
+//   - QTH marker label box scales to text width (iconSize:null + display:inline-block)
+//   - Developer credit added to bottom-right of data pane
+//   - Under development warning added under HF·WATCH logo in header
+//   - Map view (center + zoom) persisted to localStorage and restored on reload
+//   - Settings close no longer zooms map to home grid
+//   - DX diamonds both equal size (14×14px); spotter at 75% opacity, DX at 95%
+//   - DX spot count increased to 50 rendered; server requests 100 for filter headroom
 // ══════════════════════════════════════════
 
-const APP_VERSION = '0.6.0';
+const APP_VERSION = '0.6.1';
 // ══════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════
