@@ -24,6 +24,7 @@
   --border-lit: #5a3a00;
   --text:     #ffaa00;
   --text-dim: #c07800;
+  --sidebar-w: 286px;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -128,8 +129,8 @@ header {
 .map-views { flex: 1; position: relative; overflow: hidden; }
 .map-view { display: none; position: absolute; inset: 0; flex-direction: column; }
 .map-view.active { display: flex; }
-#map-wrap, #wx-wrap { flex: 1; position: relative; min-height: 0; }
-#leaflet-map, #wx-map { position: absolute; inset: 0; width: 100%; height: 100%; }
+#map-wrap, #grey-wrap, #wx-wrap { flex: 1; position: relative; min-height: 0; }
+#leaflet-map, #grey-map, #wx-map { position: absolute; inset: 0; width: 100%; height: 100%; }
 
 /* Aurora */
 #mv-aurora .aurora-dual { flex: 1; display: flex; gap: 10px; padding: 10px; background: #020208; min-height: 0; }
@@ -321,6 +322,10 @@ header {
 .sp-theme-swatch:hover { border-color: var(--amber-dim); }
 .sp-theme-swatch .sw-lbl { font-family: 'Orbitron',sans-serif; font-size: .36rem; color: var(--text-dim); text-align: center; position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
 
+/* Save feedback */
+.sp-saved { font-size: .52rem; color: var(--green); letter-spacing: .1em; text-align: right; padding: 6px 16px 10px; height: 0; overflow: hidden; transition: height .2s; }
+.sp-saved.show { height: 24px; }
+
 
 /* ── INPUTS ── */
 .tf { background: var(--bg2); border: 1px solid var(--border-lit); color: var(--amber); font-family: 'Share Tech Mono', monospace; font-size: .78rem; padding: 5px 10px; text-transform: uppercase; letter-spacing: .06em; outline: none; width: 100px; }
@@ -426,14 +431,17 @@ header {
 
 /* ── MAP BACKGROUNDS — kill white polar regions ── */
 .leaflet-container { background: var(--bg-solid) !important; }
-.map-views, #map-wrap, #wx-wrap { background: var(--bg-solid); }
+.map-views, #map-wrap, #grey-wrap, #wx-wrap { background: var(--bg-solid); }
 </style>
 </head>
 <body>
 
 <!-- HEADER -->
 <header>
-  <div class="logo">HF·WATCH<sup>v0.6.0</sup></div>
+  <div style="display:flex;flex-direction:column;gap:2px;padding-right:24px;border-right:1px solid var(--border-lit);flex-shrink:0;">
+    <div class="logo" style="border-right:none;padding-right:0;">HF·WATCH<sup>v0.6.0</sup></div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:.3rem;color:#cc2222;letter-spacing:.1em;line-height:1;">UNDER DEVELOPMENT · SUBJECT TO CHANGE</div>
+  </div>
   <div id="hdr-callsign" class="empty">⚙ SET CALLSIGN</div>
   <div class="hdr-sep"></div>
   <div class="hdr-time">
@@ -610,8 +618,13 @@ header {
         </div>
       </div>
 
-    </div>
+    </div><!-- /sb-inner -->
+
   </div><!-- /solar-sidebar -->
+
+  <div style="position:fixed;bottom:24px;right:0;width:22%;min-width:240px;max-width:380px;text-align:right;padding:3px 14px;border-top:1px solid var(--border);background:var(--bg2);z-index:49;">
+    <span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:var(--text-dim);letter-spacing:.14em;">Developed by KM7DIM</span>
+  </div>
 
 </div><!-- /main-layout -->
 
@@ -816,7 +829,7 @@ setInterval(tickClock,1000); tickClock();
 // ══════════════════════════════════════════
 // MAP SELECTOR + AUTOSCROLL
 // ══════════════════════════════════════════
-const MAP_SEQ = ['grid','aurora','weather'];
+const MAP_SEQ = ['grid','grey','aurora','weather'];
 let _activeMap='grid', _autoTimer=null, _autoTick=0;
 
 function switchMap(id) {
@@ -826,6 +839,7 @@ function switchMap(id) {
   document.getElementById('mv-'+id).classList.add('active');
   setTimeout(() => {
     if (id==='grid')    { initMap();        window._map?.invalidateSize(); }
+    if (id==='grey')    { initGreyMap();    _greyMap?.invalidateSize(); renderGreyCanvas(); }
     if (id==='aurora')  { initAuroraView(); }
     if (id==='weather') { initWeatherMap(); _wxMap?.invalidateSize(); }
   }, 60);
@@ -923,14 +937,14 @@ function applyTheme(name) {
 }
 
 function saveState() {
-  localStorage.setItem('hfw_call',      S.callsign);
-  localStorage.setItem('hfw_grid',      S.grid);
-  localStorage.setItem('hfw_refresh',   S.refresh);
-  localStorage.setItem('hfw_autocycle', S.autocycle);
-  localStorage.setItem('hfw_dxrefresh', S.dxRefresh);
-  localStorage.setItem('hfw_theme',     S.theme);
-  localStorage.setItem('hfw_owmkey',    S.owmKey);
-  localStorage.setItem('hfw_qrzkey',    S.qrzKey);
+  localStorage.setItem('hfw_call',       S.callsign);
+  localStorage.setItem('hfw_grid',       S.grid);
+  localStorage.setItem('hfw_refresh',    S.refresh);
+  localStorage.setItem('hfw_autocycle',  S.autocycle);
+  localStorage.setItem('hfw_dxrefresh',  S.dxRefresh);
+  localStorage.setItem('hfw_theme',      S.theme);
+  localStorage.setItem('hfw_owmkey',      S.owmKey);
+  localStorage.setItem('hfw_qrzkey',      S.qrzKey);
   const badge = document.getElementById('qth-badge');
   if (badge) badge.textContent = (S.callsign||S.grid) ? `${S.callsign||'---'} / ${S.grid||'----'}` : '';
   const hdrCall = document.getElementById('hdr-callsign');
@@ -938,6 +952,7 @@ function saveState() {
   else { hdrCall.textContent = '⚙ SET CALLSIGN'; hdrCall.classList.add('empty'); }
 }
 
+let _savedTimer = null;
 
 function openSettings() {
   document.getElementById('s-call').value      = S.callsign;
@@ -966,7 +981,6 @@ function commitSettings() {
   S.qrzKey = document.getElementById('s-qrzkey').value.trim();
   saveState();
 
-  if (S.grid && window._map) goToGrid(S.grid);
   if (_autoTimer) { toggleAutoScroll(); toggleAutoScroll(); }
   if (dxRefChanged && _dxActive) { clearInterval(_dxTimer); _dxTick = S.dxRefresh; _dxTimer = setInterval(dxTick, 1000); }
   scheduleRefresh();
@@ -1021,9 +1035,9 @@ document.getElementById('s-grid').addEventListener('input', (e) => {
 });
 
 // Enter/Escape in any settings field
-['s-call','s-grid','s-refresh','s-dxrefresh','s-autocycle','s-owmkey','s-qrzkey'].forEach(id => {
+['s-call','s-grid','s-refresh','s-dxrefresh','s-autocycle'].forEach(id => {
   document.getElementById(id).addEventListener('keydown', (e) => {
-    if (e.key === 'Enter')  closeSettings();
+    if (e.key === 'Enter') closeSettings();
     if (e.key === 'Escape') document.getElementById('settings-overlay').classList.remove('open');
   });
 });
@@ -1051,6 +1065,7 @@ document.querySelectorAll('[data-tip]').forEach(el => {
   el.addEventListener('mousemove', positionAlertTip);
   el.addEventListener('mouseleave', hideAlertTip);
 });
+saveState();
 document.getElementById('refresh-btn').addEventListener('click', fetchAll);
 
 // ══════════════════════════════════════════
@@ -1066,7 +1081,6 @@ function setStatus(state, msg) {
 // ══════════════════════════════════════════
 const NOAA   = 'https://services.swpc.noaa.gov';
 const HAMQSL = 'https://www.hamqsl.com/solarxml.php';
-const WORLD_COPIES = [-360, 0, 360, 720]; // map copy offsets for wrap-around rendering
 
 async function safeFetch(url, type='json') {
   try {
@@ -1078,42 +1092,20 @@ async function safeFetch(url, type='json') {
 }
 
 async function fetchNoaaDailySolar() {
-  const text = await safeFetch(`${NOAA}/text/daily-solar-indices.txt`, 'text');
+  const text = await safeFetch(`${NOAA}/text/daily-solar-indices.txt`,'text');
   if (!text) return null;
-
-  // Find column positions from the header line (starts with ':')
-  // Typical header: ":  yyyy mm dd  SFI  SSN  ..."
-  const lines = text.split('\n');
-  let sfiCol = 3, ssnCol = 4, apCol = 8; // sensible defaults
-  const headerLine = lines.find(l => l.startsWith(':') && /SFI|sfi/i.test(l));
-  if (headerLine) {
-    const cols = headerLine.replace(/^:?\s*/, '').split(/\s+/);
-    const si = cols.findIndex(c => /^sfi$/i.test(c));
-    const ni = cols.findIndex(c => /^ssn$/i.test(c));
-    const ai = cols.findIndex(c => /^(Ap|A-index)$/i.test(c));
-    if (si >= 0) sfiCol = si + 3; // +3 offset for yyyy mm dd prefix
-    if (ni >= 0) ssnCol = ni + 3;
-    if (ai >= 0) apCol  = ai + 3;
-  }
-
-  const dataLines = lines.map(l => l.trim()).filter(l => /^(19|20)\d{2}\s+\d/.test(l));
-  if (!dataLines.length) return null;
-
-  for (let i = dataLines.length - 1; i >= 0; i--) {
-    const parts = dataLines[i].split(/\s+/);
-    if (parts.length < 5) continue;
-
-    const parseCol = idx => {
-      const v = parts[idx];
-      if (!v || v.startsWith('-')) return null;
-      const n = parseFloat(v);
-      return isNaN(n) ? null : n;
-    };
-
-    const sfi = parseCol(sfiCol);
-    const ssn = parseCol(ssnCol);
-    const ap  = parseCol(apCol);
-    if (sfi !== null) return { sfi, ssn, ap };
+  const lines = text.split('\n').map(l=>l.trim()).filter(l=>/^(19|20)\d{2}\s+\d/.test(l));
+  if (!lines.length) return null;
+  for (let i=lines.length-1;i>=0;i--) {
+    const parts=lines[i].split(/\s+/); if(parts.length<5) continue;
+    const nums=parts.slice(3).map(v=>({raw:v,n:parseFloat(v)}));
+    const valid=idx=>nums[idx]&&!isNaN(nums[idx].n)&&!nums[idx].raw.startsWith('-');
+    const sfi=valid(0)?nums[0].n:null;
+    let ssn=null;
+    for(let j=1;j<Math.min(nums.length,6);j++){if(valid(j)&&nums[j].n>=0&&nums[j].n<500&&nums[j].n!==sfi){ssn=nums[j].n;break;}}
+    let ap=null;
+    for(let j=Math.min(nums.length-1,9);j>=2;j--){if(valid(j)&&nums[j].n>=0&&nums[j].n<=400){ap=nums[j].n;break;}}
+    if(sfi!==null) return {sfi,ssn,ap};
   }
   return null;
 }
@@ -1190,35 +1182,9 @@ function renderAIndex(xml,noaa){
   const el=document.getElementById('aindex-lbl');
   el.textContent=v<=7?'Quiet':v<=15?'Unsettled':v<=29?'Active':v<=49?'Minor Storm':'Major Storm'; el.style.color=c;
 }
-function renderSolarWind(plasma, mag) {
-  // Solar wind speed
-  if (plasma && plasma.length > 1) {
-    const last  = plasma[plasma.length - 1];
-    const idx   = Array.isArray(plasma[0]) ? plasma[0].indexOf('speed') : 2;
-    const speed = parseFloat(last[idx >= 0 ? idx : 2]);
-    if (!isNaN(speed)) {
-      const c = speed > 600 ? 'var(--red)' : speed > 450 ? 'var(--yellow)' : 'var(--green)';
-      setBig('sw-speed', Math.round(speed), c);
-    }
-  } else {
-    document.getElementById('sw-speed').textContent = 'N/A';
-  }
-
-  // Bz / Bt from magnetometer
-  if (mag && mag.length > 1) {
-    const last  = mag[mag.length - 1];
-    const bzIdx = Array.isArray(mag[0]) ? mag[0].indexOf('bz_gsm') : 3;
-    const btIdx = Array.isArray(mag[0]) ? mag[0].indexOf('bt')     : 6;
-    const bz    = parseFloat(last[bzIdx >= 0 ? bzIdx : 3]);
-    const bt    = parseFloat(last[btIdx >= 0 ? btIdx : 6]);
-    if (!isNaN(bz)) {
-      const bzColor = bz < -5 ? 'var(--red)' : bz < 0 ? 'var(--yellow)' : 'var(--green)';
-      const bzStr   = bz >= 0 ? `Bz +${bz.toFixed(1)}` : `Bz ${bz.toFixed(1)}`;
-      const btStr   = !isNaN(bt) ? ` | Bt ${bt.toFixed(1)}` : '';
-      document.getElementById('sw-bz').innerHTML =
-        `<span style="color:${bzColor}">${bzStr} nT${btStr}</span>`;
-    }
-  }
+function renderSolarWind(plasma,mag){
+  if(plasma&&plasma.length>1){const last=plasma[plasma.length-1];const idx=Array.isArray(plasma[0])?plasma[0].indexOf('speed'):2;const speed=parseFloat(last[idx>=0?idx:2]);if(!isNaN(speed)){const c=speed>600?'var(--red)':speed>450?'var(--yellow)':'var(--green)';setBig('sw-speed',Math.round(speed),c);}}else document.getElementById('sw-speed').textContent='N/A';
+  if(mag&&mag.length>1){const last=mag[mag.length-1];const bzIdx=Array.isArray(mag[0])?mag[0].indexOf('bz_gsm'):3;const btIdx=Array.isArray(mag[0])?mag[0].indexOf('bt'):6;const bz=parseFloat(last[bzIdx>=0?bzIdx:3]);const bt=parseFloat(last[btIdx>=0?btIdx:6]);if(!isNaN(bz)){const bzColor=bz<-5?'var(--red)':bz<0?'var(--yellow)':'var(--green)';document.getElementById('sw-bz').innerHTML=`<span style="color:${bzColor}">${bz>=0?`Bz +${bz.toFixed(1)}`:`Bz ${bz.toFixed(1)}`} nT${!isNaN(bt)?` | Bt ${bt.toFixed(1)}`:''}`;}}
 }
 
 // ══════════════════════════════════════════
@@ -1349,11 +1315,30 @@ let _gridGreyCanvas = null, _gridGreyOn = false;
 
 function initMap(){
   if(_mapInited)return; _mapInited=true;
-  const center=S.grid?gridToLatLng(S.grid):[48.27,-116.55], zoom=S.grid?8:5;
+
+  // Restore last map view from localStorage, fall back to grid or default
+  let center, zoom;
+  const saved = localStorage.getItem('hfw_mapview');
+  if (saved) {
+    try {
+      const v = JSON.parse(saved);
+      center = [v.lat, v.lng];
+      zoom   = v.zoom;
+    } catch(e) {}
+  }
+  if (!center) { center = S.grid ? gridToLatLng(S.grid) : [48.27,-116.55]; zoom = S.grid ? 8 : 5; }
+
   const map=L.map('leaflet-map',{center,zoom,minZoom:2,worldCopyJump:true}); window._map=map;
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap contributors © CARTO',subdomains:'abcd',maxZoom:13}).addTo(map);
   drawGrid(map);
-  map.on('zoomend moveend',()=>{clearTimeout(window._gridTimer);window._gridTimer=setTimeout(()=>drawGrid(map),200);});
+
+  // Save map view whenever it changes
+  map.on('zoomend moveend', () => {
+    clearTimeout(window._gridTimer);
+    window._gridTimer = setTimeout(() => drawGrid(map), 200);
+    const c = map.getCenter();
+    localStorage.setItem('hfw_mapview', JSON.stringify({lat: c.lat, lng: c.lng, zoom: map.getZoom()}));
+  });
   map.on('click',e=>{const g4=latLngToGrid(e.latlng.lat,e.latlng.lng,4),g6=latLngToGrid(e.latlng.lat,e.latlng.lng,6);document.getElementById('grid-readout').textContent=`${g4} (${g6}) — ${e.latlng.lat.toFixed(4)}°, ${e.latlng.lng.toFixed(4)}°`;});
 
   // Greyline canvas overlay on the grid map
@@ -1384,10 +1369,14 @@ function initMap(){
   csClear.addEventListener('click',clearCallsignPin);
 }
 
-// Greyline rendered on the grid map canvas — passes map/canvas directly to avoid global mutation
+// Greyline rendered on the grid map canvas (reuses greySun state)
 function renderGridGreyCanvas(){
   if(!window._map||!_gridGreyCanvas||!_greySun)return;
-  renderGreyCanvasOn(window._map, _gridGreyCanvas);
+  // Temporarily swap the map reference so renderGreyCanvas uses the grid map
+  const savedMap=_greyMap, savedCanvas=_greyCanvas;
+  _greyMap=window._map; _greyCanvas=_gridGreyCanvas;
+  renderGreyCanvas();
+  _greyMap=savedMap; _greyCanvas=savedCanvas;
 }
 
 // ── Callsign Lookup via HamDB ──
@@ -1500,8 +1489,11 @@ function drawGrid(map){
       for(let lon=lonMin;lon<lonMax;lon+=20) for(let lat=-90;lat<90;lat+=10){
         const clat=lat+5,clon=lon+10;
         if(bb.contains([clat,clon])){
-          const fi=((lon%360)+360)%360/20|0, fj=(lat+90)/10|0;
-          fl.push(L.marker([clat,clon],{icon:L.divIcon({html:`<div style="font-family:Orbitron,sans-serif;font-size:11px;color:${cLabel};opacity:0.75;font-weight:700;pointer-events:none;transform:translate(-50%,-50%)">${String.fromCharCode(65+fi%18)+String.fromCharCode(65+fj)}</div>`,iconSize:[0,0],className:''})}));
+          // Normalize lon to [-180,180) so world-copy labels are always correct
+          const normLon = ((((lon + 180) % 360) + 360) % 360) - 180;
+          const fi = Math.floor((normLon + 180) / 20);  // 0-17
+          const fj = Math.floor((lat   + 90)  / 10);   // 0-17
+          fl.push(L.marker([clat,clon],{icon:L.divIcon({html:`<div style="font-family:Orbitron,sans-serif;font-size:11px;color:${cLabel};opacity:0.75;font-weight:700;pointer-events:none;transform:translate(-50%,-50%)">${String.fromCharCode(65+fi)+String.fromCharCode(65+fj)}</div>`,iconSize:[0,0],className:''})}));
         }
       }
     }
@@ -1520,7 +1512,7 @@ function goToGrid(g,animate=true){
   WORLD_COPIES.forEach(offset=>{
     if(bounds) hlGroup.addLayer(L.rectangle([[bounds[0][0],bounds[0][1]+offset],[bounds[1][0],bounds[1][1]+offset]],{color:'#ffaa00',weight:2,fillColor:'#ffaa00',fillOpacity:.12,dashArray:'6 3'}));
     const label=(S.callsign?`${S.callsign} `:'')+g;
-    mkGroup.addLayer(L.marker([center[0],center[1]+offset],{icon:L.divIcon({html:`<div style="font-family:Orbitron,sans-serif;font-size:11px;font-weight:700;color:#ffcc44;text-shadow:0 0 8px #ffaa00;white-space:nowrap;background:rgba(7,7,5,.85);padding:2px 7px;border:1px solid #5a3a00;transform:translate(-50%,-100%) translateY(-6px)">${label}</div>`,iconSize:[0,0],className:''})}));
+    mkGroup.addLayer(L.marker([center[0],center[1]+offset],{icon:L.divIcon({html:`<div style="font-family:Orbitron,sans-serif;font-size:11px;font-weight:700;color:#ffcc44;text-shadow:0 0 8px #ffaa00;white-space:nowrap;background:rgba(7,7,5,.85);padding:2px 7px;border:1px solid #5a3a00;display:inline-block;transform:translate(-50%,-100%) translateY(-6px)">${label}</div>`,iconSize:null,iconAnchor:[0,0],className:''})}));
   });
   _gridLayers.hl=hlGroup.addTo(map);
   _gridLayers.mk=mkGroup.addTo(map);
@@ -1554,14 +1546,24 @@ function computeTerminator(sunLat,sunLon){
 // GREYLINE MAP
 // ══════════════════════════════════════════
 let _greyMap=null,_greyCanvas=null,_greySun=null,_greyTick=0;
-function renderGreyCanvasOn(map, canvas){ renderGreyCanvas(map, canvas); }
-
+function initGreyMap(){
+  if(_greyMap)return;
+  const center=S.grid?gridToLatLng(S.grid):[30,0];
+  _greyMap=L.map('grey-map',{center,zoom:2,minZoom:2,worldCopyJump:true});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap contributors © CARTO',subdomains:'abcd',maxZoom:8}).addTo(_greyMap);
+  _greyCanvas=document.createElement('canvas'); Object.assign(_greyCanvas.style,{position:'absolute',top:'0',left:'0',pointerEvents:'none',zIndex:'400'}); _greyMap.getContainer().appendChild(_greyCanvas);
+  if(S.grid){const c=gridToLatLng(S.grid);L.marker(c,{icon:L.divIcon({html:`<div style="font-family:Orbitron,sans-serif;font-size:10px;font-weight:700;color:#ffcc44;text-shadow:0 0 8px #ffaa00;background:rgba(7,7,5,.88);padding:2px 6px;border:1px solid #5a3a00;transform:translate(-50%,-100%) translateY(-6px);white-space:nowrap">${S.callsign||S.grid}</div>`,iconSize:[0,0],className:''})}).addTo(_greyMap);}
+  const resize=()=>{const s=_greyMap.getSize();_greyCanvas.width=s.x;_greyCanvas.height=s.y;renderGreyCanvas();};
+  _greyMap.on('resize',resize);
+  let _greyRaf=null;
+  const schedGrey=()=>{ if(_greyRaf)return; _greyRaf=requestAnimationFrame(()=>{_greyRaf=null;renderGreyCanvas();}); };
+  _greyMap.on('move zoom moveend zoomend',schedGrey);
+  resize();
+}
 function updateGreyline(){_greySun=getSunPosition(new Date());renderGreyCanvas();_greyTick=0;const el=document.getElementById('sun-readout');if(!el)return;const{lat,lon}=_greySun;el.textContent=`☉  Subsolar: ${Math.abs(lat).toFixed(2)}°${lat>=0?'N':'S'}, ${Math.abs(lon).toFixed(2)}°${lon>=0?'E':'W'}   |   Dec: ${lat.toFixed(2)}°`;}
-function renderGreyCanvas(targetMap, targetCanvas){
-  const map    = targetMap    || _greyMap;
-  const canvas = targetCanvas || _greyCanvas;
-  if(!map||!canvas||!_greySun)return;
-  const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;if(!W||!H)return;
+function renderGreyCanvas(){
+  if(!_greyMap||!_greyCanvas||!_greySun)return;
+  const map=_greyMap,canvas=_greyCanvas,ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;if(!W||!H)return;
   ctx.clearRect(0,0,W,H);
   const slr=_greySun.lat*Math.PI/180,sunLonR=_greySun.lon*Math.PI/180;
   let ll0,llW;try{ll0=map.containerPointToLatLng([0,H/2]);llW=map.containerPointToLatLng([W,H/2]);}catch(e){return;}
@@ -1960,10 +1962,8 @@ function gcPoints(lat1,lon1,lat2,lon2,steps=50) {
 
 // SVG triangle marker icon — anchor at visual center so arcs meet the pin center
 function dxTriIcon(color, flip=false) {
-  const opacity = flip ? '0.7' : '0.95';
-  const size    = flip ? 10 : 12;
-  const half    = size / 2;
-  const s       = size, h = half;
+  const s = 14, h = 7;
+  const opacity = flip ? '0.75' : '0.95';
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 ${s} ${s}" style="display:block">
     <polygon points="${h},0 ${s},${h} ${h},${s} 0,${h}" fill="${color}" fill-opacity="${opacity}" stroke="rgba(0,0,0,.5)" stroke-width="1.2"/>
   </svg>`;
@@ -2086,6 +2086,9 @@ function dxClearLayers() {
   if (_dxOpenPopup) { map.removeLayer(_dxOpenPopup); _dxOpenPopup = null; }
 }
 
+// World copy offsets — covers ±2 full copies visible at minZoom:2
+const WORLD_COPIES = [-360, 0, 360, 720];
+
 function dxRender() {
   const map = window._map; if (!map) return;
   dxClearLayers();
@@ -2094,7 +2097,7 @@ function dxRender() {
 
   let rendered = 0;
 
-  _dxSpots.forEach(spot => {
+  _dxSpots.slice(0, 50).forEach(spot => {
     let band = dxFreqToBand(spot.freq);
     if (!band && spot.band) band = String(spot.band).replace(/m$/i,'').trim();
     if (!band || !DX_BANDS[band]) return;
@@ -2192,12 +2195,15 @@ let _logLinesOn   = true;
 // ── ADIF parser ──────────────────────────────────────────────────────────────
 function parseAdif(text) {
   const contacts = [];
-  const records  = text.split(/<eor>/i);
+  // Split on <EOR> (case-insensitive)
+  const records = text.split(/<eor>/i);
   for (const rec of records) {
     if (!rec.trim()) continue;
     const fields = {};
-    // Use matchAll — cleaner than exec loop, no shared regex state issues
-    for (const m of rec.matchAll(/<([A-Z_0-9]+):(\d+)(?::[^>]*)?>([^<]*)/gi)) {
+    // Match <FIELD:length>value
+    const re = /<([A-Z_0-9]+):(\d+)(?::[^>]*)?>([^<]*)/gi;
+    let m;
+    while ((m = re.exec(rec)) !== null) {
       const key = m[1].toUpperCase();
       const len = parseInt(m[2]);
       fields[key] = m[3].substring(0, len).trim();
@@ -2253,7 +2259,9 @@ function logRender() {
         try { homeLoc = gridToLatLng(g); break; } catch(e) {}
       }
     }
+    if (homeLoc) console.log('[LOG] Using MY_GRIDSQUARE from ADIF as home location');
   }
+  console.log('[LOG] homeLoc resolved:', homeLoc);
   if (!homeLoc) {
     document.getElementById('log-count').textContent = 'Set home grid in settings';
     console.warn('[LOG] No home location available — set grid square in ⚙ settings');
@@ -2318,6 +2326,7 @@ function logRender() {
     rendered++;
   }
 
+  console.log(`[LOG] Rendered: ${rendered}, skipped (date): ${skippedDate}, skipped (no coords): ${skippedCoord}`);
 
   _logLayers.lines = lineGroup.addTo(map);
   _logLayers.dots  = dotGroup.addTo(map);
@@ -2365,9 +2374,13 @@ function logHandleFile(file) {
   const reader = new FileReader();
   reader.onload = (e) => {
     const text = e.target.result;
+    console.log('[LOG] File size:', text.length, 'bytes');
+    console.log('[LOG] First 300 chars:', text.substring(0, 300));
 
     const contacts = parseAdif(text);
+    console.log('[LOG] Parsed contacts:', contacts.length);
     if (contacts.length > 0) {
+      console.log('[LOG] First contact fields:', JSON.stringify(contacts[0]));
     }
 
     if (!contacts.length) {
@@ -2375,11 +2388,7 @@ function logHandleFile(file) {
       return;
     }
     _logContacts = contacts;
-    try {
-      localStorage.setItem('hfw_log', JSON.stringify(_logContacts));
-    } catch(e) {
-      console.warn('[LOG] localStorage quota exceeded — ADIF log in memory only, will not persist.');
-    }
+    try { localStorage.setItem('hfw_log', JSON.stringify(_logContacts)); } catch(e) {}
     updateLogUI();
     if (_logActive) logRender();
     if (!_logActive) logToggle();
@@ -2466,11 +2475,7 @@ async function qrzFetchLog() {
     }
 
     _logContacts = contacts;
-    try {
-      localStorage.setItem('hfw_log', JSON.stringify(_logContacts));
-    } catch(e) {
-      console.warn('[LOG] localStorage quota exceeded — QRZ log in memory only, will not persist.');
-    }
+    try { localStorage.setItem('hfw_log', JSON.stringify(_logContacts)); } catch(e) {}
     updateLogUI();
     qrzSetStatus('ok', `✓ ${contacts.length} QSOs loaded from QRZ`);
 

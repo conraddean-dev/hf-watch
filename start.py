@@ -178,7 +178,7 @@ class Handler(SimpleHTTPRequestHandler):
 
     def _proxy_owm(self):
         # /owm/{layer}/{z}/{x}/{y}.png?appid={key}
-        # self.path[4:] strips '/owm' (4 chars), leaving /{layer}/... for the OWM tile URL
+        # Proxies OWM tile requests to bypass browser CORS restrictions
         try:
             req = urllib.request.Request(
                 f'https://tile.openweathermap.org/map{self.path[4:]}',
@@ -203,7 +203,7 @@ class Handler(SimpleHTTPRequestHandler):
         result = {'error': 'No data'}
 
         try:
-            url = 'http://www.dxwatch.com/dxsd1/s.php?c=75'
+            url = 'http://www.dxwatch.com/dxsd1/s.php?c=100'
             status, headers, data = fetch_url(url)
             ct = headers.get('Content-Type', 'unknown')
             safe_print(f'  DX    dxwatch HTTP {status}  {ct}  {len(data)} bytes')
@@ -236,12 +236,13 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_header('Cache-Control', 'no-store')
             self.end_headers()
             self.wfile.write(body)
+            self.wfile.flush()
         except Exception as e:
             safe_print(f'  DX    response write error: {e}')
 
     def _cors(self):
         self.send_header('Access-Control-Allow-Origin',  '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', '*')
 
     def log_message(self, fmt, *args):
@@ -253,15 +254,15 @@ class Handler(SimpleHTTPRequestHandler):
 
 if __name__ == '__main__':
     safe_print(f'''
-  ╔══════════════════════════════════════════════╗
-  ║           HF·WATCH  —  start.py             ║
-  ╠══════════════════════════════════════════════╣
-  ║  Serving from:                               ║
-  ║  {os.getcwd():<44s}║
-  ║                                              ║
-  ║  Open → http://localhost:{PORT}/hf-watch.html  ║
-  ║  Press  Ctrl+C  to stop                      ║
-  ╚══════════════════════════════════════════════╝
+  +----------------------------------------------+
+  |           HF.WATCH  --  start.py             |
+  +----------------------------------------------+
+  |  Serving from:                               |
+  |  {os.getcwd():<44s}|
+  |                                              |
+  |  Open -> http://localhost:{PORT}/hf-watch.html  |
+  |  Press  Ctrl+C  to stop                      |
+  +----------------------------------------------+
 ''')
     try:
         ThreadingHTTPServer(('', PORT), Handler).serve_forever()
