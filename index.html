@@ -38,11 +38,6 @@ body {
   display: flex; flex-direction: column; height: 100vh;
 }
 
-body::after {
-  content: ''; position: fixed; inset: 0;
-  background: repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.042) 2px,rgba(0,0,0,.042) 4px);
-  pointer-events: none; z-index: 9999;
-}
 
 header {
   flex-shrink: 0; height: 72px;
@@ -54,13 +49,12 @@ header {
 .logo {
   font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 1.15rem;
   letter-spacing: .32em; color: var(--amber-bright); white-space: nowrap; flex-shrink: 0;
-  text-shadow: 0 0 18px var(--amber), 0 0 40px rgba(255,170,0,.2);
   padding-right: 24px; border-right: 1px solid var(--border-lit);
 }
 .logo sup { font-size: .4rem; color: var(--text-dim); vertical-align: super; margin-left: 3px; letter-spacing: .1em; }
 #hdr-callsign {
   font-family: 'Orbitron', sans-serif; font-size: 1.2rem; font-weight: 900;
-  letter-spacing: .28em; color: var(--amber); text-shadow: 0 0 16px var(--amber);
+  letter-spacing: .28em; color: var(--amber);
   /* Truly centered in the header — immune to clock width changes */
   position: absolute;
   left: 50%; transform: translateX(-50%);
@@ -74,8 +68,8 @@ header {
   font-variant-numeric: tabular-nums;
 }
 #clock-time {
-  font-family: 'Orbitron', sans-serif; font-size: 1.15rem; font-weight: 600;
-  color: var(--amber-bright); text-shadow: 0 0 10px var(--amber); letter-spacing: .06em;
+  font-family: 'Share Tech Mono', monospace; font-size: 1.15rem; font-weight: 600;
+  color: var(--amber-bright); letter-spacing: .06em;
   font-variant-numeric: tabular-nums;
 }
 #clock-date { font-size: .52rem; color: var(--amber-dim); letter-spacing: .1em; margin-top: 1px; }
@@ -106,7 +100,7 @@ header {
   transition: all .15s; text-transform: uppercase; white-space: nowrap;
 }
 .msel-btn:hover { border-color: var(--amber-dim); color: var(--amber); }
-.msel-btn.active { background: var(--amber-glow); border-color: var(--amber); color: var(--amber-bright); text-shadow: 0 0 8px var(--amber); }
+.msel-btn.active { background: var(--amber-glow); border-color: var(--amber); color: var(--amber-bright); }
 .msel-sep { width: 1px; height: 24px; background: var(--border-lit); margin: 0 6px; }
 .msel-play {
   font-family: 'Orbitron', sans-serif; font-size: .54rem; letter-spacing: .12em;
@@ -129,8 +123,8 @@ header {
 .map-views { flex: 1; position: relative; overflow: hidden; }
 .map-view { display: none; position: absolute; inset: 0; flex-direction: column; }
 .map-view.active { display: flex; }
-#map-wrap, #grey-wrap, #wx-wrap { flex: 1; position: relative; min-height: 0; }
-#leaflet-map, #grey-map, #wx-map { position: absolute; inset: 0; width: 100%; height: 100%; }
+#map-wrap, #wx-wrap { flex: 1; position: relative; min-height: 0; }
+#leaflet-map, #wx-map { position: absolute; inset: 0; width: 100%; height: 100%; }
 
 /* Aurora */
 #mv-aurora .aurora-dual { flex: 1; display: flex; gap: 10px; padding: 10px; background: #020208; min-height: 0; }
@@ -172,11 +166,10 @@ header {
 .band-table tr:last-child td { border-bottom: none; }
 .band-table tr:hover td { background: rgba(255,170,0,.03); }
 .band-name { font-family: 'Orbitron', sans-serif; font-size: .58rem; color: var(--amber-bright); }
-.band-freq { font-size: .56rem; color: var(--text-dim); }
 .cond { font-family: 'Orbitron', sans-serif; font-size: .48rem; letter-spacing: .08em; padding: 3px 8px; border: 1px solid currentColor; display: inline-block; }
-.cond-G { color: var(--green);  text-shadow: 0 0 5px var(--green);  border-color: rgba(46,255,136,.4); }
-.cond-F { color: var(--yellow); text-shadow: 0 0 5px var(--yellow); border-color: rgba(255,215,0,.4); }
-.cond-P { color: var(--red);    text-shadow: 0 0 5px var(--red);    border-color: rgba(255,58,58,.4); }
+.cond-G { color: var(--green);  border-color: rgba(46,255,136,.4); }
+.cond-F { color: var(--yellow); border-color: rgba(255,215,0,.4); }
+.cond-P { color: var(--red);    border-color: rgba(255,58,58,.4); }
 .cond-U { color: var(--text-dim); border-color: var(--border); }
 
 .alerts-list { max-height: 140px; overflow-y: auto; }
@@ -273,7 +266,6 @@ header {
 .sp-title {
   font-family: 'Orbitron', sans-serif; font-size: .62rem;
   letter-spacing: .24em; color: var(--amber-bright);
-  text-shadow: 0 0 10px var(--amber);
 }
 .sp-hint { font-size: .5rem; color: var(--text-dim); letter-spacing: .04em; }
 
@@ -323,10 +315,6 @@ header {
 .sp-theme-swatch .sw-lbl { font-family: 'Orbitron',sans-serif; font-size: .36rem; color: var(--text-dim); text-align: center; position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
 
 /* Save feedback */
-.sp-saved { font-size: .52rem; color: var(--green); letter-spacing: .1em; text-align: right; padding: 6px 16px 10px; height: 0; overflow: hidden; transition: height .2s; }
-.sp-saved.show { height: 24px; }
-
-
 /* ── INPUTS ── */
 .tf { background: var(--bg2); border: 1px solid var(--border-lit); color: var(--amber); font-family: 'Share Tech Mono', monospace; font-size: .78rem; padding: 5px 10px; text-transform: uppercase; letter-spacing: .06em; outline: none; width: 100px; }
 .tf:focus { border-color: var(--amber); box-shadow: 0 0 7px rgba(255,170,0,.15); }
@@ -376,7 +364,7 @@ header {
   color:var(--text-dim); cursor:pointer; transition:all .15s; white-space:nowrap;
 }
 .dx-live-btn:hover { border-color:var(--amber-dim); color:var(--amber); }
-.dx-live-btn.active { border-color:var(--green); color:var(--green); background:rgba(46,255,136,.08); text-shadow:0 0 8px var(--green); }
+.dx-live-btn.active { border-color:var(--green); color:var(--green); background:rgba(46,255,136,.08); }
 #dx-band-row { display:none; align-items:center; gap:4px; }
 .dx-band-btn {
   font-family:'Orbitron',sans-serif; font-size:.44rem; letter-spacing:.1em;
@@ -394,7 +382,7 @@ header {
   color:var(--text-dim); cursor:pointer; transition:all .15s; white-space:nowrap;
 }
 .log-live-btn:hover { border-color:var(--amber-dim); color:var(--amber); }
-.log-live-btn.active { border-color:#44aaff; color:#44aaff; background:rgba(68,170,255,.08); text-shadow:0 0 8px #44aaff; }
+.log-live-btn.active { border-color:#44aaff; color:#44aaff; background:rgba(68,170,255,.08); }
 #log-controls { display:none; align-items:center; gap:6px; }
 #log-count { font-family:'Orbitron',sans-serif; font-size:.46rem; color:var(--amber-dim); letter-spacing:.08em; white-space:nowrap; }
 .log-spot-label {
@@ -453,7 +441,7 @@ header {
 
 /* ── MAP BACKGROUNDS — kill white polar regions ── */
 .leaflet-container { background: var(--bg-solid) !important; }
-.map-views, #map-wrap, #grey-wrap, #wx-wrap { background: var(--bg-solid); }
+.map-views, #map-wrap, #wx-wrap { background: var(--bg-solid); }
 
 /* ════════════════════════════════════════════
    MOBILE / RESPONSIVE LAYOUT
@@ -479,7 +467,6 @@ header {
 #sidebar-fab.open   { border-color: var(--amber); color: var(--amber-bright); background: var(--amber-glow); }
 
 /* Sidebar toggle in toolbar: hidden everywhere (replaced by FAB) */
-#sidebar-toggle { display: none; }
 
 /* Sidebar close button: hidden on desktop */
 #sidebar-close { display: none; }
@@ -563,7 +550,6 @@ header {
   #dx-refresh-cd { display: none !important; }
   #dx-spot-count { display: none !important; }
 
-  #log-import-btn { font-size: .40rem; padding: 4px 7px; }
   #log-clear-btn  { font-size: .40rem; padding: 4px 7px; }
   #log-count { display: none; }
 
@@ -650,7 +636,7 @@ header {
 <!-- HEADER -->
 <header>
   <div style="display:flex;flex-direction:column;gap:2px;padding-right:24px;border-right:1px solid var(--border-lit);flex-shrink:0;">
-    <div class="logo" style="border-right:none;padding-right:0;">HF·WATCH<sup>v0.6.1</sup></div>
+    <div class="logo" style="border-right:none;padding-right:0;">HF·WATCH<sup>v0.6.2</sup></div>
     <div class="header-dev-warning" style="font-family:'Share Tech Mono',monospace;font-size:.3rem;color:#cc2222;letter-spacing:.1em;line-height:1;">UNDER DEVELOPMENT · SUBJECT TO CHANGE</div>
   </div>
   <div id="hdr-callsign" class="empty">⚙ SET CALLSIGN</div>
@@ -840,7 +826,7 @@ header {
   </div><!-- /solar-sidebar -->
 
   <div id="dev-credit" style="position:fixed;bottom:24px;right:0;width:22%;min-width:240px;max-width:380px;text-align:right;padding:3px 14px;border-top:1px solid var(--border);background:var(--bg2);z-index:49;">
-    <span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:var(--text-dim);letter-spacing:.14em;">Developed by KM7DIM</span>
+    <span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:var(--text-dim);letter-spacing:.14em;">Developed by KM7DIM utilizing Claude</span>
   </div>
 
 </div><!-- /main-layout -->
@@ -997,6 +983,26 @@ header {
 //   MINOR — new features, backward compatible
 //   PATCH — bug fixes, tweaks, minor adjustments
 //
+// v0.6.2 (2026-04-23)
+//   - Developer credit updated: "Developed by KM7DIM utilizing Claude"
+//   - CRT scanline overlay removed for improved readability
+//   - All text-glow (text-shadow) removed site-wide
+//   - Clock switched to Share Tech Mono for true fixed-width digits
+//   - Mobile: ☀ DATA fixed FAB button in bottom-right corner
+//   - Mobile: Solar sidebar becomes bottom sheet on portrait phones
+//   - Mobile: Band filter wraps to 3rd row on portrait mobile
+//   - Mobile: Settings panel full-screen single-column with ✕ close button
+//   - LOG button shows friendly toast if no log is loaded
+//   - Lines toggle and toolbar IMPORT button removed (settings-only)
+//   - Spot count and refresh timer hidden on mobile
+//   - All toolbar controls merged to single scrollable row
+//   - Map minZoom reduced to 1 for wider zoom-out range
+//   - Theme persists correctly on page reload (applyTheme called at boot)
+//   - All popups and markers use theme CSS variables
+//   - Dead functions removed: dxLabelMarker, initGreyMap
+//   - Dead CSS removed: .band-freq, .sp-saved, #grey-wrap, #grey-map, etc.
+//   - All console.log debug statements removed
+//   - start.py: verbose parse_spots logging reduced to errors only
 // v0.6.1 (2026-04-23)
 //   - Grid label formula fixed: normalized longitude to [-180,180) before Maidenhead calculation
 //   - Grid label world-copy wrap fixed: labels now correct on all map copies
@@ -1009,7 +1015,7 @@ header {
 //   - DX spot count increased to 50 rendered; server requests 100 for filter headroom
 // ══════════════════════════════════════════
 
-const APP_VERSION = '0.6.1';
+const APP_VERSION = '0.6.2';
 // ══════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════
@@ -1042,7 +1048,7 @@ setInterval(tickClock,1000); tickClock();
 // ══════════════════════════════════════════
 // MAP SELECTOR + AUTOSCROLL
 // ══════════════════════════════════════════
-const MAP_SEQ = ['grid','grey','aurora','weather'];
+const MAP_SEQ = ['grid','aurora','weather'];
 let _activeMap='grid', _autoTimer=null, _autoTick=0;
 
 function switchMap(id) {
@@ -1052,7 +1058,6 @@ function switchMap(id) {
   document.getElementById('mv-'+id).classList.add('active');
   setTimeout(() => {
     if (id==='grid')    { initMap();        window._map?.invalidateSize(); }
-    if (id==='grey')    { initGreyMap();    _greyMap?.invalidateSize(); renderGreyCanvas(); }
     if (id==='aurora')  { initAuroraView(); }
     if (id==='weather') { initWeatherMap(); _wxMap?.invalidateSize(); }
   }, 60);
@@ -1170,7 +1175,6 @@ function saveState() {
   else { hdrCall.textContent = '⚙ SET CALLSIGN'; hdrCall.classList.add('empty'); }
 }
 
-let _savedTimer = null;
 
 function openSettings() {
   document.getElementById('s-call').value      = S.callsign;
@@ -1334,7 +1338,7 @@ function xv(xml,tag){const el=xml&&xml.querySelector(tag);return el?el.textConte
 // ══════════════════════════════════════════
 // RENDER HELPERS
 // ══════════════════════════════════════════
-function setBig(id,val,color){const el=document.getElementById(id);el.textContent=val;el.style.color=color||'var(--amber-bright)';el.style.textShadow=`0 0 16px ${color||'var(--amber)'}`;}
+function setBig(id,val,color){const el=document.getElementById(id);el.textContent=val;el.style.color=color||'var(--amber-bright)';el.style.textShadow='none';}
 function condClass(v){if(!v)return'cond cond-U';const l=v.toLowerCase();return l==='good'?'cond cond-G':l==='fair'?'cond cond-F':l==='poor'?'cond cond-P':'cond cond-U';}
 function condLabel(v){if(!v)return'–';const l=v.toLowerCase();return l==='good'?'GOOD':l==='fair'?'FAIR':l==='poor'?'POOR':v.toUpperCase();}
 
@@ -1390,7 +1394,7 @@ function renderXRay(xrData){
   else if(flux>=1e-5){cls='C'+(flux/1e-5).toFixed(1);c='var(--yellow)';}
   else if(flux>=1e-6){cls='B'+(flux/1e-6).toFixed(1);c='var(--amber-bright)';}
   else{cls='A'+(flux/1e-7).toFixed(1);c='var(--green)';}
-  el.textContent=cls;el.style.color=c;el.style.textShadow=`0 0 16px ${c}`;
+  el.textContent=cls;el.style.color=c;el.style.textShadow='none';
   document.getElementById('xray-note').textContent=flux>=1e-3?'⚠ Major flare':flux>=1e-4?'Moderate flare':flux>=1e-5?'Minor flare':flux>=1e-6?'Low activity':'Quiet sun';
 }
 function renderAIndex(xml,noaa){
@@ -1600,13 +1604,14 @@ function initMap(){
 }
 
 // Greyline rendered on the grid map canvas (reuses greySun state)
+// renderGridGreyCanvas — passes map/canvas directly, no global mutation
 function renderGridGreyCanvas(){
   if(!window._map||!_gridGreyCanvas||!_greySun)return;
-  // Temporarily swap the map reference so renderGreyCanvas uses the grid map
-  const savedMap=_greyMap, savedCanvas=_greyCanvas;
-  _greyMap=window._map; _greyCanvas=_gridGreyCanvas;
-  renderGreyCanvas();
-  _greyMap=savedMap; _greyCanvas=savedCanvas;
+  renderGreyCanvasOn(window._map, _gridGreyCanvas);
+}
+
+function renderGreyCanvasOn(targetMap, targetCanvas){
+  renderGreyCanvas(targetMap, targetCanvas);
 }
 
 // ── Callsign Lookup via HamDB ──
@@ -1667,7 +1672,7 @@ async function lookupCallsign(call) {
         text-align:center;
         min-width:120px;
       ">
-        <div style="font-size:22px;font-weight:900;color:${tAmber};text-shadow:0 0 12px ${tAmber};letter-spacing:.18em;line-height:1.1;">${rec.call}</div>
+        <div style="font-size:22px;font-weight:900;color:${tAmber};letter-spacing:.18em;line-height:1.1;">${rec.call}</div>
         <div style="font-size:13px;color:${tText};margin-top:4px;font-family:'Share Tech Mono',monospace;letter-spacing:.06em;line-height:1.3;">${name}</div>
         <div style="font-size:11px;color:${tTextDim};margin-top:3px;font-family:'Share Tech Mono',monospace;letter-spacing:.04em;">${grid}${loc?' · '+loc:''}</div>
       </div>
@@ -1752,7 +1757,7 @@ function goToGrid(g,animate=true){
     const mc = themeColor('--amber-bright');
     const mb = themeColor('--bg2');
     const mb2 = themeColor('--border-lit');
-    mkGroup.addLayer(L.marker([center[0],center[1]+offset],{icon:L.divIcon({html:`<div style="font-family:Orbitron,sans-serif;font-size:11px;font-weight:700;color:${mc};text-shadow:0 0 8px ${themeColor('--amber')};white-space:nowrap;background:${mb};padding:2px 7px;border:1px solid ${mb2};display:inline-block;transform:translate(-50%,-100%) translateY(-6px)">${label}</div>`,iconSize:null,iconAnchor:[0,0],className:''})}));
+    mkGroup.addLayer(L.marker([center[0],center[1]+offset],{icon:L.divIcon({html:`<div style="font-family:Orbitron,sans-serif;font-size:11px;font-weight:700;color:${mc};white-space:nowrap;background:${mb};padding:2px 7px;border:1px solid ${mb2};display:inline-block;transform:translate(-50%,-100%) translateY(-6px)">${label}</div>`,iconSize:null,iconAnchor:[0,0],className:''})}));
   });
   _gridLayers.hl=hlGroup.addTo(map);
   _gridLayers.mk=mkGroup.addTo(map);
@@ -1786,24 +1791,12 @@ function computeTerminator(sunLat,sunLon){
 // GREYLINE MAP
 // ══════════════════════════════════════════
 let _greyMap=null,_greyCanvas=null,_greySun=null,_greyTick=0;
-function initGreyMap(){
-  if(_greyMap)return;
-  const center=S.grid?gridToLatLng(S.grid):[30,0];
-  _greyMap=L.map('grey-map',{center,zoom:2,minZoom:2,worldCopyJump:true});
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap contributors © CARTO',subdomains:'abcd',maxZoom:8}).addTo(_greyMap);
-  _greyCanvas=document.createElement('canvas'); Object.assign(_greyCanvas.style,{position:'absolute',top:'0',left:'0',pointerEvents:'none',zIndex:'400'}); _greyMap.getContainer().appendChild(_greyCanvas);
-  if(S.grid){const c=gridToLatLng(S.grid);L.marker(c,{icon:L.divIcon({html:`<div style="font-family:Orbitron,sans-serif;font-size:10px;font-weight:700;color:#ffcc44;text-shadow:0 0 8px #ffaa00;background:rgba(7,7,5,.88);padding:2px 6px;border:1px solid #5a3a00;transform:translate(-50%,-100%) translateY(-6px);white-space:nowrap">${S.callsign||S.grid}</div>`,iconSize:[0,0],className:''})}).addTo(_greyMap);}
-  const resize=()=>{const s=_greyMap.getSize();_greyCanvas.width=s.x;_greyCanvas.height=s.y;renderGreyCanvas();};
-  _greyMap.on('resize',resize);
-  let _greyRaf=null;
-  const schedGrey=()=>{ if(_greyRaf)return; _greyRaf=requestAnimationFrame(()=>{_greyRaf=null;renderGreyCanvas();}); };
-  _greyMap.on('move zoom moveend zoomend',schedGrey);
-  resize();
-}
 function updateGreyline(){_greySun=getSunPosition(new Date());renderGreyCanvas();_greyTick=0;const el=document.getElementById('sun-readout');if(!el)return;const{lat,lon}=_greySun;el.textContent=`☉  Subsolar: ${Math.abs(lat).toFixed(2)}°${lat>=0?'N':'S'}, ${Math.abs(lon).toFixed(2)}°${lon>=0?'E':'W'}   |   Dec: ${lat.toFixed(2)}°`;}
-function renderGreyCanvas(){
-  if(!_greyMap||!_greyCanvas||!_greySun)return;
-  const map=_greyMap,canvas=_greyCanvas,ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;if(!W||!H)return;
+function renderGreyCanvas(targetMap, targetCanvas){
+  const map    = targetMap    || _greyMap;
+  const canvas = targetCanvas || _greyCanvas;
+  if(!map||!canvas||!_greySun)return;
+  const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;if(!W||!H)return;
   ctx.clearRect(0,0,W,H);
   const slr=_greySun.lat*Math.PI/180,sunLonR=_greySun.lon*Math.PI/180;
   let ll0,llW;try{ll0=map.containerPointToLatLng([0,H/2]);llW=map.containerPointToLatLng([W,H/2]);}catch(e){return;}
@@ -2216,23 +2209,6 @@ function dxTriIcon(color, flip=false) {
 }
 
 // Build a Leaflet popup label marker
-function dxLabelMarker(lat, lon, spot, color, side) {
-  const call   = side==='de' ? spot.de : spot.dx;
-  const mode   = spot.mode || '';
-  const freq   = parseFloat(spot.freq||0).toFixed(1);
-  const info   = spot.comment || spot.info || '';
-  const t      = spot.time ? spot.time.substring(11,16)+' UTC' : '';
-  const html = `
-    <div class="dx-spot-label" style="color:${color};border-color:${color};transform:translate(-50%,-110%)">
-      <div class="dx-label-call" style="color:${color};text-shadow:0 0 10px ${color}">${call}</div>
-      <div class="dx-label-info">${freq} MHz  ${mode}  ${info.substring(0,24)}  ${t}</div>
-    </div>`;
-  return L.marker([lat,lon],{
-    icon: L.divIcon({html, iconSize:null, iconAnchor:[0,0], className:''}),
-    interactive:false, zIndexOffset:800
-  });
-}
-
 // ── Init band toggle buttons ──
 function dxInitPanel() {
   const row = document.getElementById('dx-band-row');
@@ -2364,9 +2340,7 @@ function dxRender() {
       if (_dxOpenPopup) { map.removeLayer(_dxOpenPopup); _dxOpenPopup = null; }
       const html = `
         <div class="dx-spot-label" style="color:${color};border-color:${color};transform:translate(-50%,-115%)">
-          <div class="dx-label-call" style="color:${color};text-shadow:0 0 10px ${color}">${spot.dx}</div>
-          <div class="dx-label-info">${freqMHz} MHz  ${spot.mode||''}  ${(spot.comment||'').substring(0,28)}</div>
-          <div class="dx-label-info" style="opacity:.55;margin-top:2px;">de ${spot.de}  ${(spot.time||'').substring(0,12)}</div>
+          <div class="dx-label-call" style="color:${color};margin-top:2px;">de ${spot.de}  ${(spot.time||'').substring(0,12)}</div>
         </div>`;
       _dxOpenPopup = L.marker([dxLat, popDxLon], {
         icon: L.divIcon({html, iconSize:null, iconAnchor:[0,0], className:''}),
@@ -2499,12 +2473,9 @@ function logRender() {
         try { homeLoc = gridToLatLng(g); break; } catch(e) {}
       }
     }
-    if (homeLoc) console.log('[LOG] Using MY_GRIDSQUARE from ADIF as home location');
   }
-  console.log('[LOG] homeLoc resolved:', homeLoc);
   if (!homeLoc) {
     document.getElementById('log-count').textContent = 'Set home grid in settings';
-    console.warn('[LOG] No home location available — set grid square in ⚙ settings');
     return;
   }
 
@@ -2535,9 +2506,7 @@ function logRender() {
       if (_logOpenPopup) { map.removeLayer(_logOpenPopup); _logOpenPopup = null; }
       const html = `
         <div class="log-spot-label" style="color:${color};border-color:${color};transform:translate(-50%,-115%)">
-          <div class="log-label-call" style="color:${color};text-shadow:0 0 10px ${color}">${qso.CALL}</div>
-          <div class="log-label-info">${freqDisplay}  ${qso.MODE||''}  ${rst}</div>
-          <div class="log-label-info" style="opacity:.55;margin-top:2px;">${dateStr}  ${timeStr}</div>
+          <div class="log-label-call" style="color:${color};margin-top:2px;">${dateStr}  ${timeStr}</div>
         </div>`;
       _logOpenPopup = L.marker([lat, popLon], {
         icon: L.divIcon({ html, iconSize: null, iconAnchor: [0,0], className: '' }),
@@ -2566,7 +2535,6 @@ function logRender() {
     rendered++;
   }
 
-  console.log(`[LOG] Rendered: ${rendered}, skipped (date): ${skippedDate}, skipped (no coords): ${skippedCoord}`);
 
   _logLayers.lines = lineGroup.addTo(map);
   _logLayers.dots  = dotGroup.addTo(map);
@@ -2619,13 +2587,9 @@ function logHandleFile(file) {
   const reader = new FileReader();
   reader.onload = (e) => {
     const text = e.target.result;
-    console.log('[LOG] File size:', text.length, 'bytes');
-    console.log('[LOG] First 300 chars:', text.substring(0, 300));
 
     const contacts = parseAdif(text);
-    console.log('[LOG] Parsed contacts:', contacts.length);
     if (contacts.length > 0) {
-      console.log('[LOG] First contact fields:', JSON.stringify(contacts[0]));
     }
 
     if (!contacts.length) {
@@ -2822,6 +2786,9 @@ logWireControls();
 logLoadStored();
 dxToggle();
 fetchAll();
+
+// Draw QTH home grid highlight at boot without flying the map
+if (S.grid && window._map) goToGrid(S.grid, false);
 
 // Solar position updates every 60s regardless of active view
 // This keeps the greyline current for 24/7 unattended display
