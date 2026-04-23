@@ -199,7 +199,7 @@ header {
   max-width: 420px;
   background: var(--bg2);
   border: 1px solid var(--border-lit);
-  box-shadow: 0 8px 32px rgba(0,0,0,.8), 0 0 20px rgba(0,0,0,.4);
+  box-shadow: 0 8px 32px rgba(0,0,0,.8), 0 0 20px var(--amber-glow);
   padding: 12px 14px;
   font-family: 'Share Tech Mono', monospace;
   font-size: .58rem;
@@ -399,7 +399,7 @@ header {
 #log-count { font-family:'Orbitron',sans-serif; font-size:.46rem; color:var(--amber-dim); letter-spacing:.08em; white-space:nowrap; }
 .log-spot-label {
   position:absolute; font-family:'Share Tech Mono',monospace;
-  background:rgba(4,12,20,.92); border:1px solid; border-radius:2px;
+  background:var(--bg2); border:1px solid; border-radius:2px;
   padding:5px 9px; pointer-events:none; white-space:nowrap; z-index:700;
 }
 .log-label-call { font-family:'Orbitron',sans-serif; font-size:.68rem; font-weight:700; letter-spacing:.1em; }
@@ -407,7 +407,7 @@ header {
 
 /* DX Spot popup label */
 .dx-spot-label {
-  font-family:'Share Tech Mono',monospace; background:rgba(4,8,14,.96);
+  font-family:'Share Tech Mono',monospace; background:var(--bg2);
   border:1.5px solid currentColor; padding:6px 10px; white-space:nowrap;
   box-shadow:0 0 14px rgba(0,0,0,.9); pointer-events:none;
 }
@@ -428,6 +428,28 @@ header {
 .wx-frame-bar { font-size: .6rem; color: var(--text-dim); }
 .wx-now { color: var(--yellow); font-family: 'Orbitron', sans-serif; font-size: .54rem; letter-spacing: .08em; }
 .wx-mode-btn.active { border-color: var(--amber); color: var(--amber); background: var(--amber-glow); }
+
+/* ── Toast notification ── */
+#hfw-toast {
+  display: none;
+  position: fixed;
+  bottom: 80px; left: 50%; transform: translateX(-50%);
+  background: var(--bg3);
+  border: 1px solid var(--amber-dim);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .58rem;
+  letter-spacing: .05em;
+  padding: 10px 18px;
+  max-width: 88vw;
+  text-align: center;
+  z-index: 8000;
+  box-shadow: 0 4px 24px rgba(0,0,0,.7), 0 0 16px var(--amber-glow);
+  line-height: 1.5;
+  pointer-events: none;
+}
+#hfw-toast.visible { display: block; animation: toast-in .2s ease; }
+@keyframes toast-in { from { opacity:0; transform: translateX(-50%) translateY(8px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
 
 /* ── MAP BACKGROUNDS — kill white polar regions ── */
 .leaflet-container { background: var(--bg-solid) !important; }
@@ -538,7 +560,8 @@ header {
   #refresh-btn { width: 32px !important; height: 32px !important; font-size: .9rem !important; }
 
   #dx-spot-count { font-size: .42rem; }
-  #dx-refresh-cd { font-size: .40rem; }
+  #dx-refresh-cd { display: none !important; }
+  #dx-spot-count { display: none !important; }
 
   #log-import-btn { font-size: .40rem; padding: 4px 7px; }
   #log-clear-btn  { font-size: .40rem; padding: 4px 7px; }
@@ -640,6 +663,8 @@ header {
   <button class="icon-btn" id="settings-btn" title="Station settings">⚙</button>
 </header>
 
+<div id="hfw-toast"></div>
+
 <!-- Fixed solar data FAB — mobile only -->
 <button id="sidebar-fab" title="Solar data panel">☀ DATA</button>
 
@@ -649,7 +674,7 @@ header {
   <!-- MAP COLUMN -->
   <div class="map-column">
 
-    <!-- Map selector bar -->
+    <!-- Map selector bar — single unified row -->
     <div class="map-sel-bar">
       <button class="msel-btn active" data-map="grid">Grid Map</button>
       <button class="msel-btn" data-map="aurora">Aurora</button>
@@ -662,13 +687,10 @@ header {
       <div id="dx-band-row"></div>
       <span id="dx-spot-count"></span>
       <span id="dx-refresh-cd"></span>
-      <div class="msel-sep" style="height:18px;margin:0 6px;"></div>
       <button class="log-live-btn" id="log-live-btn">◉ LOG</button>
+      <span id="log-count"></span>
       <div id="log-controls">
-        <label class="ckl" id="log-lines-ckl" title="Toggle connecting lines"><input type="checkbox" id="chk-log-lines" checked> Lines</label>
-        <button class="go-btn" id="log-import-btn" style="padding:4px 10px;font-size:.46rem;">📂 IMPORT</button>
         <button class="go-btn cs-clear-btn" id="log-clear-btn" style="padding:4px 10px;font-size:.46rem;display:none;">✕ CLEAR</button>
-        <span id="log-count"></span>
       </div>
       <input type="file" id="log-file-input" accept=".adi,.adif" style="display:none;">
       <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
@@ -1110,6 +1132,11 @@ const THEMES = {
   },
 };
 
+// Helper: get a CSS variable value from the current theme
+function themeColor(varName) {
+  return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+}
+
 function applyTheme(name) {
   S.theme = name;
   const t = THEMES[name] || THEMES.amber;
@@ -1257,6 +1284,7 @@ document.querySelectorAll('[data-tip]').forEach(el => {
   el.addEventListener('mouseleave', hideAlertTip);
 });
 saveState();
+applyTheme(S.theme);   // restore saved theme on every page load
 document.getElementById('refresh-btn').addEventListener('click', fetchAll);
 
 // ══════════════════════════════════════════
@@ -1405,6 +1433,17 @@ function renderBandsDerived(sfi,kp){
   document.getElementById('band-tbody').innerHTML=model.map(b=>{const d=calc(b.mSFI,b.mKP,'day'),n=calc(b.mSFI,b.mKP,'night');return`<tr><td><span class="band-name">${b.label}</span></td><td><span class="${condClass(d)}">${condLabel(d)}</span></td><td><span class="${condClass(n)}">${condLabel(n)}</span></td></tr>`;}).join('');
 }
 
+// ── Toast notification ───────────────────────────────────────────────────────
+let _toastTimer = null;
+function showToast(msg, duration = 3000) {
+  const el = document.getElementById('hfw-toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('visible');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('visible'), duration);
+}
+
 // ── Alert tooltip ─────────────────────────────────────────────────────────────
 const _alertTip = document.getElementById('alert-tooltip');
 let   _alertTipTimer = null;
@@ -1519,7 +1558,7 @@ function initMap(){
   }
   if (!center) { center = S.grid ? gridToLatLng(S.grid) : [48.27,-116.55]; zoom = S.grid ? 8 : 5; }
 
-  const map=L.map('leaflet-map',{center,zoom,minZoom:2,worldCopyJump:true}); window._map=map;
+  const map=L.map('leaflet-map',{center,zoom,minZoom:1,worldCopyJump:true}); window._map=map;
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap contributors © CARTO',subdomains:'abcd',maxZoom:13}).addTo(map);
   drawGrid(map);
 
@@ -1605,6 +1644,13 @@ async function lookupCallsign(call) {
   // Place / replace pin
   clearCallsignPin(false); // remove old pin without resetting input
 
+  const tAmber    = themeColor('--amber');
+  const tAmberDim = themeColor('--amber-dim');
+  const tBg2      = themeColor('--bg2');
+  const tBg3      = themeColor('--bg3');
+  const tText     = themeColor('--text');
+  const tTextDim  = themeColor('--text-dim');
+
   const iconHtml = `
     <div style="
       position:relative;
@@ -1613,25 +1659,25 @@ async function lookupCallsign(call) {
     ">
       <div style="
         font-family:Orbitron,sans-serif;
-        background:rgba(4,12,20,.95);
-        border:2px solid #44aaff;
-        box-shadow:0 0 16px rgba(68,170,255,.5), inset 0 0 8px rgba(68,170,255,.08);
+        background:${tBg3};
+        border:2px solid ${tAmber};
+        box-shadow:0 0 16px ${tAmberDim}80, inset 0 0 8px ${tAmberDim}20;
         padding:8px 14px 10px;
         white-space:nowrap;
         text-align:center;
         min-width:120px;
       ">
-        <div style="font-size:22px;font-weight:900;color:#44aaff;text-shadow:0 0 12px #44aaff;letter-spacing:.18em;line-height:1.1;">${rec.call}</div>
-        <div style="font-size:13px;color:#aaddff;margin-top:4px;font-family:'Share Tech Mono',monospace;letter-spacing:.06em;line-height:1.3;">${name}</div>
-        <div style="font-size:11px;color:#6b99aa;margin-top:3px;font-family:'Share Tech Mono',monospace;letter-spacing:.04em;">${grid}${loc?' · '+loc:''}</div>
+        <div style="font-size:22px;font-weight:900;color:${tAmber};text-shadow:0 0 12px ${tAmber};letter-spacing:.18em;line-height:1.1;">${rec.call}</div>
+        <div style="font-size:13px;color:${tText};margin-top:4px;font-family:'Share Tech Mono',monospace;letter-spacing:.06em;line-height:1.3;">${name}</div>
+        <div style="font-size:11px;color:${tTextDim};margin-top:3px;font-family:'Share Tech Mono',monospace;letter-spacing:.04em;">${grid}${loc?' · '+loc:''}</div>
       </div>
       <div style="
         position:absolute;left:50%;transform:translateX(-50%);
         width:0;height:0;
         border-left:8px solid transparent;
         border-right:8px solid transparent;
-        border-top:12px solid #44aaff;
-        filter:drop-shadow(0 3px 6px rgba(68,170,255,.6));
+        border-top:12px solid ${tAmber};
+        filter:drop-shadow(0 3px 6px ${tAmberDim}99);
       "></div>
     </div>`;
 
@@ -1703,7 +1749,10 @@ function goToGrid(g,animate=true){
   WORLD_COPIES.forEach(offset=>{
     if(bounds) hlGroup.addLayer(L.rectangle([[bounds[0][0],bounds[0][1]+offset],[bounds[1][0],bounds[1][1]+offset]],{color:'#ffaa00',weight:2,fillColor:'#ffaa00',fillOpacity:.12,dashArray:'6 3'}));
     const label=(S.callsign?`${S.callsign} `:'')+g;
-    mkGroup.addLayer(L.marker([center[0],center[1]+offset],{icon:L.divIcon({html:`<div style="font-family:Orbitron,sans-serif;font-size:11px;font-weight:700;color:#ffcc44;text-shadow:0 0 8px #ffaa00;white-space:nowrap;background:rgba(7,7,5,.85);padding:2px 7px;border:1px solid #5a3a00;display:inline-block;transform:translate(-50%,-100%) translateY(-6px)">${label}</div>`,iconSize:null,iconAnchor:[0,0],className:''})}));
+    const mc = themeColor('--amber-bright');
+    const mb = themeColor('--bg2');
+    const mb2 = themeColor('--border-lit');
+    mkGroup.addLayer(L.marker([center[0],center[1]+offset],{icon:L.divIcon({html:`<div style="font-family:Orbitron,sans-serif;font-size:11px;font-weight:700;color:${mc};text-shadow:0 0 8px ${themeColor('--amber')};white-space:nowrap;background:${mb};padding:2px 7px;border:1px solid ${mb2};display:inline-block;transform:translate(-50%,-100%) translateY(-6px)">${label}</div>`,iconSize:null,iconAnchor:[0,0],className:''})}));
   });
   _gridLayers.hl=hlGroup.addTo(map);
   _gridLayers.mk=mkGroup.addTo(map);
@@ -1855,7 +1904,7 @@ const WX_MODES = {
 async function initWeatherMap(){
   if(_wxInited)return; _wxInited=true;
   const center = S.grid ? gridToLatLng(S.grid) : [48,-116];
-  _wxMap = L.map('wx-map', {center, zoom:5, minZoom:2});
+  _wxMap = L.map('wx-map', {center, zoom:5, minZoom:1});
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
     {attribution:'© OpenStreetMap contributors © CARTO', subdomains:'abcd', maxZoom:19}
   ).addTo(_wxMap);
@@ -2550,6 +2599,11 @@ function updateLogUI() {
 
 // ── Toggle LOG layer on/off ──────────────────────────────────────────────────
 function logToggle() {
+  // If trying to activate with no contacts, show friendly prompt
+  if (!_logActive && !_logContacts.length) {
+    showToast('No log loaded — import your ADIF file or sync from QRZ in ⚙ Settings → Contact Log', 4000);
+    return;
+  }
   _logActive = !_logActive;
   const btn      = document.getElementById('log-live-btn');
   const controls = document.getElementById('log-controls');
@@ -2689,15 +2743,14 @@ function qrzSetStatus(type, msg) {
 }
 // ── Wire all log controls ────────────────────────────────────────────────────
 function logWireControls() {
-  // Toggle button
+  // Toggle button — with friendly prompt if no log loaded
   document.getElementById('log-live-btn').addEventListener('click', logToggle);
 
-  // File input (hidden)
+  // File input (hidden) — triggered from settings only
   const fileInput = document.getElementById('log-file-input');
   fileInput.addEventListener('change', (e) => { logHandleFile(e.target.files[0]); e.target.value=''; });
 
-  // Import buttons (toolbar + settings)
-  document.getElementById('log-import-btn').addEventListener('click', () => fileInput.click());
+  // Import button in settings panel only
   document.getElementById('sp-log-import-btn').addEventListener('click', () => fileInput.click());
   document.getElementById('sp-qrz-sync-btn').addEventListener('click', qrzFetchLog);
 
@@ -2710,12 +2763,6 @@ function logWireControls() {
   };
   document.getElementById('log-clear-btn').addEventListener('click', clearLog);
   document.getElementById('sp-log-clear-btn').addEventListener('click', clearLog);
-
-  // Lines toggle
-  document.getElementById('chk-log-lines').addEventListener('change', (e) => {
-    _logLinesOn = e.target.checked;
-    if (_logActive) logRender();
-  });
 
   // Date filter change
   document.getElementById('s-log-filter').addEventListener('change', () => {
