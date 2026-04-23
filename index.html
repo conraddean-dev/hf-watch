@@ -437,29 +437,32 @@ header {
    MOBILE / RESPONSIVE LAYOUT
    ════════════════════════════════════════════ */
 
-/* Sidebar toggle button — hidden on desktop */
-#sidebar-toggle {
+/* ── Fixed FAB DATA button — mobile only ── */
+#sidebar-fab {
   display: none;
-  font-family: 'Orbitron', sans-serif; font-size: .5rem; letter-spacing: .12em;
-  padding: 5px 11px; background: var(--amber-glow);
-  border: 1px solid var(--amber-dim); color: var(--amber);
-  cursor: pointer; transition: all .15s; white-space: nowrap; flex-shrink: 0;
+  position: fixed;
+  bottom: 32px; right: 14px;
+  z-index: 480;
+  font-family: 'Orbitron', sans-serif; font-size: .52rem; letter-spacing: .14em;
+  padding: 9px 16px;
+  background: var(--bg2);
+  border: 1px solid var(--amber-dim);
+  color: var(--amber);
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0,0,0,.6), 0 0 12px rgba(255,170,0,.12);
   touch-action: manipulation;
+  transition: all .15s;
 }
-#sidebar-toggle.open { border-color: var(--amber); background: rgba(255,170,0,.22); }
+#sidebar-fab:active { background: var(--amber-glow); border-color: var(--amber); }
+#sidebar-fab.open   { border-color: var(--amber); color: var(--amber-bright); background: var(--amber-glow); }
 
-/* Mobile sidebar close button — hidden on desktop */
-#sidebar-close {
-  display: none;
-  position: absolute; top: 10px; right: 12px;
-  font-family: 'Orbitron', sans-serif; font-size: .44rem; letter-spacing: .1em;
-  background: transparent; border: 1px solid var(--border-lit);
-  color: var(--text-dim); cursor: pointer; padding: 4px 10px;
-  touch-action: manipulation; z-index: 1;
-}
-#sidebar-close:hover { border-color: var(--amber-dim); color: var(--amber); }
+/* Sidebar toggle in toolbar: hidden everywhere (replaced by FAB) */
+#sidebar-toggle { display: none; }
 
-/* Sidebar backdrop — hidden on desktop */
+/* Sidebar close button: hidden on desktop */
+#sidebar-close { display: none; }
+
+/* Backdrop */
 #sidebar-backdrop {
   display: none;
   position: fixed; inset: 0; z-index: 490;
@@ -467,22 +470,24 @@ header {
 }
 #sidebar-backdrop.open { display: block; }
 
-/* ── Tablet (≤960px): sidebar becomes a hidden right-side drawer ── */
+/* ══════════════════════════════════════════
+   TABLET ≤960px
+   ══════════════════════════════════════════ */
 @media (max-width: 960px) {
+  #sidebar-fab { display: block; }
 
-  header { padding: 0 10px 0 12px; }
+  #sidebar-close {
+    display: block;
+    position: absolute; top: 10px; right: 12px;
+    font-family: 'Orbitron', sans-serif; font-size: .44rem; letter-spacing: .1em;
+    background: transparent; border: 1px solid var(--border-lit);
+    color: var(--text-dim); cursor: pointer; padding: 4px 10px;
+    touch-action: manipulation; z-index: 1;
+  }
+  #sidebar-close:hover { border-color: var(--amber-dim); color: var(--amber); }
 
-  /* Show sidebar toggle button */
-  #sidebar-toggle { display: flex; align-items: center; }
-
-  /* Show in-panel close button */
-  #sidebar-close { display: block; }
-
-  /* Hide developer credit — it's pinned to the sidebar position which
-     is now off-screen; credit lives inside the sidebar instead */
   #dev-credit { display: none !important; }
 
-  /* Sidebar: remove from layout flow, hide off right edge */
   .solar-sidebar {
     position: fixed;
     top: 0; right: 0; bottom: 0;
@@ -496,151 +501,123 @@ header {
   }
   .solar-sidebar.open { transform: translateX(0); }
 
-  /* Band row scrollable */
-  #dx-band-row { overflow-x: auto; flex-wrap: nowrap; max-width: 220px; }
-
-  /* Settings: full width */
   .settings-panel {
     width: calc(100vw - 24px);
     max-width: calc(100vw - 24px);
   }
 }
 
-/* ── Mobile (≤640px): compress header and toolbar ── */
+/* ══════════════════════════════════════════
+   MOBILE ≤640px
+   ══════════════════════════════════════════ */
 @media (max-width: 640px) {
   html { font-size: 20px; }
 
-  /* Compact header — logo only, hide callsign and separator to prevent overlap */
-  header { height: 54px; padding: 0 8px 0 10px; }
-  .logo { font-size: .88rem; letter-spacing: .18em; }
+  header { height: 50px; padding: 0 8px 0 10px; }
+  .logo { font-size: .82rem; letter-spacing: .16em; }
   .logo sup { font-size: .34rem; }
   .header-dev-warning { display: none !important; }
   #hdr-callsign { display: none !important; }
   .hdr-sep { display: none !important; }
-  #clock-time { font-size: .88rem; letter-spacing: .04em; }
   #clock-date, #clock-local { display: none; }
+  #clock-time { font-size: .82rem; letter-spacing: .04em; }
 
-  /* Toolbar: single horizontally scrollable row */
   .map-sel-bar {
-    height: auto; min-height: 44px; padding: 4px 8px;
-    overflow-x: auto; flex-wrap: nowrap; gap: 4px;
+    height: auto; min-height: 42px; padding: 4px 8px;
+    gap: 4px; overflow-x: auto; flex-wrap: nowrap;
     -webkit-overflow-scrolling: touch;
   }
   .map-sel-bar::-webkit-scrollbar { height: 0; }
+  .map-sel-bar .msel-sep { display: none; }
 
-  /* Touch-friendly button sizing */
-  .msel-btn    { padding: 7px 10px; font-size: .46rem; letter-spacing: .1em; }
-  .msel-play   { padding: 7px 10px; font-size: .46rem; }
-  .msel-sep    { flex-shrink: 0; }
-  .dx-live-btn, .log-live-btn { padding: 7px 10px; }
+  .msel-btn     { padding: 6px 9px; font-size: .44rem; letter-spacing: .08em; }
+  .msel-play    { padding: 6px 9px; font-size: .44rem; }
+  .dx-live-btn  { padding: 6px 9px; }
+  .log-live-btn { padding: 6px 9px; }
 
-  /* Map sub-bars: scrollable */
+  #refresh-btn { width: 32px !important; height: 32px !important; font-size: .9rem !important; }
+
+  #dx-spot-count { font-size: .42rem; }
+  #dx-refresh-cd { font-size: .40rem; }
+
+  #log-import-btn { font-size: .40rem; padding: 4px 7px; }
+  #log-clear-btn  { font-size: .40rem; padding: 4px 7px; }
+  #log-count { display: none; }
+
   .map-sub-bar {
-    height: auto; min-height: 42px; padding: 4px 8px;
-    overflow-x: auto; flex-wrap: nowrap; gap: 6px;
+    height: auto; min-height: 40px; padding: 4px 8px;
+    gap: 6px; overflow-x: auto; flex-wrap: nowrap;
     -webkit-overflow-scrolling: touch;
   }
   .map-sub-bar::-webkit-scrollbar { height: 0; }
-
-  /* Callsign lookup */
   .cs-input { width: 76px; }
   #grid-readout { display: none; }
 
-  /* Aurora: stack vertically on portrait */
   #mv-aurora .aurora-dual { flex-direction: column; }
 
-  /* Band buttons smaller on mobile */
-  .dx-band-btn { padding: 4px 7px; font-size: .41rem; }
+  .dx-band-btn { padding: 5px 9px; font-size: .44rem; }
 
-  /* Log controls */
-  #log-import-btn { font-size: .41rem; padding: 4px 7px; }
-  #log-clear-btn  { font-size: .41rem; padding: 4px 7px; }
-  #log-count { display: none; }
-
-  /* Settings panel: full screen single column */
   .settings-panel {
     width: 100vw; max-width: 100vw;
-    top: 0; left: 0;
-    transform: none;
+    top: 0; left: 0; transform: none;
     max-height: 100dvh;
     grid-template-columns: 1fr;
-    overflow-y: auto;
+    overflow-y: auto; border-radius: 0;
   }
+  #sp-close-btn { font-size: .6rem; padding: 8px 14px; min-height: 40px; }
 
-  /* Status bar: minimal — dot + message only */
   #status-right span:not(#qth-badge) { display: none; }
 }
 
-
-/* ── Portrait phones (≤480px): band row as 3rd toolbar row + bottom sheet ── */
+/* ══════════════════════════════════════════
+   PORTRAIT ≤480px — band row + bottom sheet
+   ══════════════════════════════════════════ */
 @media (max-width: 480px) {
+  .map-sel-bar { flex-wrap: wrap; }
 
-  /* ── Band filter: wrap to its own full-width 3rd row ── */
-  .map-sel-bar {
-    flex-wrap: wrap;
-    height: auto;
-    padding-bottom: 0;
-  }
-
-  /* Band row fills the full width on its own row — JS controls display:flex/none */
   #dx-band-row {
-    order: 99;               /* push below all toolbar items */
-    width: 100%;
-    max-width: 100%;
-    overflow-x: auto;
-    padding: 4px 0 5px;
-    gap: 5px;
-    border-top: 1px solid var(--border);
-    flex-wrap: nowrap;
+    order: 99; width: 100%; max-width: 100%;
+    overflow-x: auto; padding: 4px 4px 5px;
+    gap: 5px; border-top: 1px solid var(--border);
+    flex-wrap: nowrap; align-items: center;
     -webkit-overflow-scrolling: touch;
   }
+  #dx-band-row::-webkit-scrollbar { height: 0; }
 
-  /* Slightly larger band buttons for touch */
-  .dx-band-btn { padding: 5px 9px; font-size: .44rem; min-height: 32px; }
-
-  /* ── Solar data: bottom sheet pull-up ── */
   .solar-sidebar {
     top: auto !important;
     left: 0 !important; right: 0 !important; bottom: 0 !important;
     width: 100vw !important; max-width: 100vw !important;
     height: 80vh;
-    transform: translateY(105%) !important;
+    transform: translateY(108%) !important;
     border-left: none !important;
-    border-top: 2px solid var(--border-lit);
-    border-radius: 14px 14px 0 0;
+    border-top: 2px solid var(--amber-dim);
+    border-radius: 16px 16px 0 0;
     overflow-y: auto;
     transition: transform .3s cubic-bezier(.4,0,.2,1) !important;
   }
   .solar-sidebar.open { transform: translateY(0) !important; }
 
-  /* Pull handle indicator above close button */
   .solar-sidebar::before {
     content: '';
     display: block;
-    width: 40px; height: 4px;
+    width: 44px; height: 4px;
     background: var(--border-lit);
     border-radius: 2px;
-    margin: 10px auto 0;
-    flex-shrink: 0;
+    margin: 12px auto 4px;
   }
 
-  /* Reposition close button inside bottom sheet */
-  #sidebar-close {
-    position: absolute; top: 8px; right: 12px;
-    font-size: .46rem; padding: 4px 10px;
-  }
+  #sidebar-close { position: absolute; top: 8px; right: 12px; font-size: .46rem; padding: 4px 10px; }
+  #sidebar-fab   { bottom: 36px; right: 14px; }
 }
 
-
-/* ── Touch targets — all interactive elements on touch devices ── */
+/* ── Touch optimisation ── */
 @media (hover: none) {
   button, .go-btn, .msel-btn, .msel-play,
   .dx-live-btn, .log-live-btn, .icon-btn,
-  .dx-band-btn, .wx-mode-btn {
+  .dx-band-btn, .wx-mode-btn, .ckl {
     touch-action: manipulation;
   }
-  .ckl { touch-action: manipulation; min-height: 36px; align-items: center; }
-  /* Allow horizontal scroll on toolbars without triggering map pan */
   .map-sel-bar, .map-sub-bar { touch-action: pan-x pan-y; }
 }
 </style>
@@ -662,6 +639,9 @@ header {
   </div>
   <button class="icon-btn" id="settings-btn" title="Station settings">⚙</button>
 </header>
+
+<!-- Fixed solar data FAB — mobile only -->
+<button id="sidebar-fab" title="Solar data panel">☀ DATA</button>
 
 <!-- MAIN -->
 <div class="main-layout">
@@ -692,7 +672,6 @@ header {
       </div>
       <input type="file" id="log-file-input" accept=".adi,.adif" style="display:none;">
       <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
-        <button id="sidebar-toggle" title="Toggle solar data panel">☀ DATA</button>
         <button class="icon-btn" id="refresh-btn" title="Refresh data" style="width:26px;height:26px;font-size:.85rem;">↻</button>
       </div>
     </div>
@@ -766,7 +745,7 @@ header {
 
   <!-- SOLAR SIDEBAR -->
   <div class="solar-sidebar">
-    <button id="sidebar-close" onclick="document.querySelector('.solar-sidebar').classList.remove('open');document.getElementById('sidebar-backdrop').classList.remove('open');document.getElementById('sidebar-toggle').classList.remove('open');document.getElementById('sidebar-toggle').textContent='☀ DATA';">✕ CLOSE</button>
+    <button id="sidebar-close">✕ CLOSE</button>
     <div class="sb-inner">
 
       <div class="sb-section">
@@ -861,7 +840,10 @@ header {
 
     <div class="sp-head">
       <div class="sp-title">⚙ STATION SETTINGS</div>
-      <div class="sp-hint">Click outside to save &amp; close</div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="sp-hint">Click outside to save &amp; close</div>
+        <button id="sp-close-btn" onclick="closeSettings()" style="font-family:'Orbitron',sans-serif;font-size:.52rem;letter-spacing:.1em;background:transparent;border:1px solid var(--border-lit);color:var(--text-dim);cursor:pointer;padding:4px 10px;touch-action:manipulation;flex-shrink:0;" title="Save and close">✕</button>
+      </div>
     </div>
 
     <!-- STATION IDENTITY -->
@@ -2746,37 +2728,38 @@ function logWireControls() {
 // ══════════════════════════════════════════
 (function() {
   const sidebar  = document.querySelector('.solar-sidebar');
-  const toggle   = document.getElementById('sidebar-toggle');
+  const fab      = document.getElementById('sidebar-fab');
   const backdrop = document.getElementById('sidebar-backdrop');
 
   function openSidebar() {
     sidebar.classList.add('open');
     backdrop.classList.add('open');
-    toggle.classList.add('open');
-    toggle.textContent = '✕ DATA';
+    fab.classList.add('open');
+    fab.textContent = '✕ DATA';
   }
   function closeSidebar() {
     sidebar.classList.remove('open');
     backdrop.classList.remove('open');
-    toggle.classList.remove('open');
-    toggle.textContent = '☀ DATA';
+    fab.classList.remove('open');
+    fab.textContent = '☀ DATA';
   }
 
-  toggle.addEventListener('click', () =>
+  fab.addEventListener('click', () =>
     sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
   );
   backdrop.addEventListener('click', closeSidebar);
 
-  // Orientation change: close drawer and invalidate maps
+  // Wire sidebar-close button (in-panel)
+  const closeBtn = document.getElementById('sidebar-close');
+  if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+
+  // Orientation: close and invalidate
   window.addEventListener('orientationchange', () => {
     closeSidebar();
-    setTimeout(() => {
-      window._map?.invalidateSize();
-      _wxMap?.invalidateSize();
-    }, 350);
+    setTimeout(() => { window._map?.invalidateSize(); _wxMap?.invalidateSize(); }, 350);
   });
 
-  // Resize: restore desktop state and invalidate maps
+  // Resize: close on desktop restore, always invalidate
   window.addEventListener('resize', () => {
     if (window.innerWidth > 960) closeSidebar();
     clearTimeout(window._resizeTimer);
