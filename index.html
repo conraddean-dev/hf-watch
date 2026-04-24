@@ -648,7 +648,7 @@ header {
 <!-- HEADER -->
 <header>
   <div style="display:flex;flex-direction:column;gap:2px;padding-right:24px;border-right:1px solid var(--border-lit);flex-shrink:0;">
-    <div class="logo" style="border-right:none;padding-right:0;">HF·WATCH<sup>v0.7.44</sup></div>
+    <div class="logo" style="border-right:none;padding-right:0;">HF·WATCH<sup>v0.7.46</sup></div>
     <div class="header-dev-warning" style="font-family:'DM Mono',monospace;font-size:.3rem;color:#cc2222;letter-spacing:.1em;line-height:1;">UNDER DEVELOPMENT · SUBJECT TO CHANGE</div>
   </div>
   <div id="hdr-callsign" class="empty">⚙ SET CALLSIGN</div>
@@ -1030,6 +1030,18 @@ header {
 //   MINOR — new features, backward compatible
 //   PATCH — bug fixes, tweaks, minor adjustments
 //
+// v0.7.46 (2026-04-24)
+//   - Fix: vhfCondClass() regex used bare /likely/ which matched inside "Unlikely"
+//     causing Unlikely → green instead of red. Fixed with \b word boundaries on
+//     all terms. Tested against all 13 possible output values — all correct.
+// v0.7.45 (2026-04-24)
+//   - VHF Conditions expanded to match HamQSL reference layout:
+//     Aur Lat (aurora equatorward boundary, °), Aurora, 6m EsEU, 4m EsEU,
+//     2m EsEU, 6m EsNA, 2m EsNA, EME Deg, Flare Prb %
+//   - HamQSL path reads latdegree attr from aurora node for Aur Lat
+//   - HamQSL path reads solarflareprob from XML; color-codes by risk level
+//   - Derived path uses Kp formula for aurora lat, seasonal model per band/region
+//   - Added vhfCondRow() and vhfTextRow() helpers for clean row construction
 // v0.7.44 (2026-04-24)
 //   - Added: Solar map view — 2×2 grid of SDO images (AIA 193/304/171, HMI white light)
 //     Refreshes every 15 min; manual ↻ button; same pattern as Aurora view
@@ -1106,7 +1118,7 @@ header {
 //   - DX spot count increased to 50 rendered; server requests 100 for filter headroom
 // ══════════════════════════════════════════
 
-const APP_VERSION = '0.7.44';
+const APP_VERSION = '0.7.46';
 // ══════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════
@@ -1715,56 +1727,99 @@ function renderAlerts(data) {
 // ══════════════════════════════════════════
 function vhfCondClass(v){
   if(!v)return'cond cond-U';const l=v.toLowerCase();
-  if(/open|active|good|likely/.test(l))  return'cond cond-G';
-  if(/possible|fair/.test(l))             return'cond cond-F';
-  if(/closed|poor|quiet|unlikely/.test(l))return'cond cond-P';
+  if(/\bopen\b|\bactive\b|\bgood\b|\blikely\b/.test(l))   return'cond cond-G';
+  if(/\bpossible\b|\bfair\b/.test(l))                      return'cond cond-F';
+  if(/\bclosed\b|\bpoor\b|\bquiet\b|\bunlikely\b/.test(l)) return'cond cond-P';
   return'cond cond-U';
 }
-function vhfCondLabel(v){ return v?v.toUpperCase().replace('BAND ',''):'–'; }
+function vhfCondLabel(v){ return v?v.replace(/band /i,'').toUpperCase():'–'; }
+
+// Row renderers — returns a <tr> string
+function vhfCondRow(label,val){
+  return`<tr><td><span class="band-name">${label}</span></td><td><span class="${vhfCondClass(val)}">${vhfCondLabel(val)}</span></td></tr>`;
+}
+function vhfTextRow(label,val,color='var(--text-primary)'){
+  return`<tr><td><span class="band-name">${label}</span></td><td style="text-align:right;font-family:var(--font-ui);font-size:.56rem;color:${color};padding-right:4px;">${val}</td></tr>`;
+}
 
 function renderVHF(xml,noaa,kp){
   const src=document.getElementById('vhf-source');
-  // Try HamQSL calculatedvhfconditions
   if(xml){
     const nodes=xml.querySelectorAll('calculatedvhfconditions phenomenon');
     if(nodes.length){
-      const cm={};
-      nodes.forEach(n=>{ cm[`${n.getAttribute('name')}|${n.getAttribute('location')}`]=n.textContent.trim(); });
-      const emeVal=kp<=2?'Good':kp<=4?'Fair':'Poor';
-      const rows=[
-        {label:'Aurora NH', val:cm['aurora|northern_hemi']},
-        {label:'6m Es NA',  val:cm['E-Skip|north_america_6m']},
-        {label:'6m Es EU',  val:cm['E-Skip|europe_6m']},
-        {label:'EME',       val:emeVal},
-      ].filter(r=>r.val);
-      if(rows.length>=2){
-        document.getElementById('vhf-tbody').innerHTML=rows.map(r=>
-          `<tr><td><span class="band-name">${r.label}</span></td><td><span class="${vhfCondClass(r.val)}">${vhfCondLabel(r.val)}</span></td></tr>`
-        ).join('');
+      const cm={}, at={};
+      nodes.forEach(n=>{
+        const key=`${n.getAttribute('name')}|${n.getAttribute('location')}`;
+        cm[key]=n.textContent.trim();
+        at[key]={lat:n.getAttribute('latdegree')};
+      });
+
+      // Aurora boundary latitude — prefer XML attribute, fall back to Kp formula
+      const aurLat = at['aurora|northern_hemi']?.lat
+        ? parseFloat(at['aurora|northern_hemi'].lat).toFixed(1)
+        : Math.max(40, 66.5 - kp * 2.5).toFixed(1);
+
+      // Solar flare probability from HamQSL XML
+      const flareProb = xv(xml,'solarflareprob');
+
+      // EME degradation derived from Kp (not in HamQSL VHF section)
+      const emeVal = kp<=2?'Good':kp<=4?'Fair':'Poor';
+
+      const rows = [
+        vhfTextRow('Aur Lat', `${aurLat}°`, 'var(--text-primary)'),
+        cm['aurora|northern_hemi']           ? vhfCondRow('Aurora',    cm['aurora|northern_hemi'])        : '',
+        cm['E-Skip|europe_6m']               ? vhfCondRow('6m EsEU',   cm['E-Skip|europe_6m'])            : '',
+        cm['E-Skip|europe_4m']               ? vhfCondRow('4m EsEU',   cm['E-Skip|europe_4m'])            : '',
+        cm['E-Skip|europe_2m']               ? vhfCondRow('2m EsEU',   cm['E-Skip|europe_2m'])            : '',
+        cm['E-Skip|north_america_6m']        ? vhfCondRow('6m EsNA',   cm['E-Skip|north_america_6m'])     : '',
+        cm['E-Skip|north_america_2m']        ? vhfCondRow('2m EsNA',   cm['E-Skip|north_america_2m'])     : '',
+        vhfCondRow('EME Deg', emeVal),
+        flareProb ? vhfTextRow('Flare Prb', `${flareProb}%`,
+          parseInt(flareProb)>=50?'var(--red)':parseInt(flareProb)>=20?'var(--yellow)':'var(--green)') : '',
+      ].filter(Boolean);
+
+      if(rows.length>=3){
+        document.getElementById('vhf-tbody').innerHTML=rows.join('');
         if(src){src.textContent='HamQSL';src.style.color='var(--green)';}
         return;
       }
     }
   }
   renderVHFDerived(kp);
-  if(src)src.textContent='derived';
+  if(src){src.textContent='derived';src.style.color='';}
 }
 
 function renderVHFDerived(kp){
-  const month=new Date().getUTCMonth()+1; // 1–12
-  // Aurora scatter: high Kp = Active (green — good for VHF aurora DX)
-  const auroraV=kp>=5?'Active':kp>=3?'Possible':'Quiet';
-  const auroraC=kp>=5?'cond cond-G':kp>=3?'cond cond-F':'cond cond-P';
-  // 6m Sporadic-E: Northern Hemisphere seasonal model (peak May–Aug)
-  const esV=(month>=5&&month<=8)?'Likely':
-            (month===4||month===9||month<=1||month>=11)?'Possible':'Unlikely';
-  // EME: low Kp = quiet ionosphere = better Earth-Moon-Earth
-  const emeV=kp<=2?'Good':kp<=4?'Fair':'Poor';
+  const month=new Date().getUTCMonth()+1;
+  const aurLat = Math.max(40, 66.5 - kp * 2.5).toFixed(1);
+
+  // Aurora scatter: high Kp = Active (good for VHF aurora DX)
+  const auroraV = kp>=5?'Active':kp>=3?'Possible':'Quiet';
+
+  // 6m Sporadic-E: Northern Hemisphere seasonal peak May–Aug
+  const es6V = (month>=5&&month<=8) ? 'Likely'
+             : (month===4||month===9||month===10||month<=1||month>=12) ? 'Possible'
+             : 'Unlikely';
+
+  // 4m Es: slightly narrower seasonal window than 6m
+  const es4V = (month>=5&&month<=8) ? 'Possible' : 'Unlikely';
+
+  // 2m Es: rare, typically only at Es season peaks
+  const es2V = (month>=6&&month<=7) ? 'Possible' : 'Unlikely';
+
+  // EME degradation: low Kp = quieter ionosphere = better
+  const emeV = kp<=2?'Good':kp<=4?'Fair':'Poor';
+
   document.getElementById('vhf-tbody').innerHTML=[
-    {label:'Aurora',  v:auroraV, cls:auroraC},
-    {label:'6m Es',   v:esV,     cls:vhfCondClass(esV)},
-    {label:'EME',     v:emeV,    cls:vhfCondClass(emeV)},
-  ].map(r=>`<tr><td><span class="band-name">${r.label}</span></td><td><span class="${r.cls}">${r.v.toUpperCase()}</span></td></tr>`).join('');
+    vhfTextRow('Aur Lat', `${aurLat}°`),
+    vhfCondRow('Aurora',   auroraV),
+    vhfCondRow('6m EsEU',  es6V),
+    vhfCondRow('4m EsEU',  es4V),
+    vhfCondRow('2m EsEU',  es2V),
+    vhfCondRow('6m EsNA',  es6V),
+    vhfCondRow('2m EsNA',  es2V),
+    vhfCondRow('EME Deg',  emeV),
+  ].join('');
 }
 
 // ══════════════════════════════════════════
