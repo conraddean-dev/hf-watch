@@ -35,19 +35,14 @@ def parse_spots(data: bytes) -> list:
     try:
         obj = json.loads(data)
     except Exception as e:
-        safe_print(f'  DX    JSON parse failed: {e}')
+        safe_print(f'  DX ✗  JSON parse failed: {e}')
         return []
 
-    # s  = {spot_id: [dx_call, freq, de_call, comment, time, ...]}
-    # ci = {callsign: [prefix, country, continent, flag, cq, itu, lat, lon, ...]}
     spots_raw = obj.get('s', {})
     ci        = obj.get('ci', {})
 
     if not isinstance(spots_raw, dict) or not spots_raw:
-        safe_print(f'  DX    s is empty or wrong type: {type(spots_raw).__name__}')
         return []
-
-    safe_print(f'  DX    parsing {len(spots_raw)} raw spots, {len(ci)} callsigns in ci')
 
     spots = []
     for spot_id, arr in spots_raw.items():
@@ -69,7 +64,6 @@ def parse_spots(data: bytes) -> list:
                 'mode': '', 'time': time_,
             }
 
-            # Attach lat/lon from ci so HTML can skip DXCC prefix lookup
             de_info = ci.get(de, [])
             dx_info = ci.get(dx, [])
             if len(de_info) >= 8:
@@ -89,7 +83,6 @@ def parse_spots(data: bytes) -> list:
         except Exception:
             continue
 
-    safe_print(f'  DX    built {len(spots)} spots')
     return spots
 
 class Handler(SimpleHTTPRequestHandler):
@@ -205,17 +198,15 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             url = 'http://www.dxwatch.com/dxsd1/s.php?c=100'
             status, headers, data = fetch_url(url)
-            ct = headers.get('Content-Type', 'unknown')
-            safe_print(f'  DX    dxwatch HTTP {status}  {ct}  {len(data)} bytes')
             spots = parse_spots(data)
             if spots:
-                safe_print(f'  DX checkmark  {len(spots)} spots from dxwatch')
+                safe_print(f'  DX ✓  {len(spots)} spots')
                 result = spots
             else:
-                result = {'error': f'dxwatch: 0 spots parsed from {len(data)}b'}
+                result = {'error': f'0 spots parsed from {len(data)}b'}
         except Exception as e:
-            safe_print(f'  DX    dxwatch error: {type(e).__name__}: {e}')
-            result = {'error': f'dxwatch: {type(e).__name__}: {e}'}
+            safe_print(f'  DX ✗  {type(e).__name__}: {e}')
+            result = {'error': f'{type(e).__name__}: {e}'}
 
         # Serialize — strip NaN coords and retry if needed
         try:

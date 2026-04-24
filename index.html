@@ -72,7 +72,7 @@ header {
   font-variant-numeric: tabular-nums;
 }
 #clock-time {
-  font-family: 'DM Mono', monospace; font-size: 1.15rem; font-weight: 600;
+  font-family: 'Share Tech Mono', monospace; font-size: 1.15rem; font-weight: 600;
   color: var(--amber-bright); letter-spacing: .06em;
   font-variant-numeric: tabular-nums;
 }
@@ -99,7 +99,7 @@ header {
 }
 .msel-btn {
   font-family: var(--font-ui); font-size: .54rem; font-weight: 600;
-  letter-spacing: var(--ui-letter-spacing); /* placeholder */ letter-spacing-REMOVE: .16em; padding: 7px 14px; background: transparent;
+  letter-spacing: var(--ui-letter-spacing); padding: 7px 14px; background: transparent;
   border: 1px solid var(--border); color: var(--text-dim); cursor: pointer;
   transition: all .15s; text-transform: uppercase; white-space: nowrap;
 }
@@ -648,7 +648,7 @@ header {
 <!-- HEADER -->
 <header>
   <div style="display:flex;flex-direction:column;gap:2px;padding-right:24px;border-right:1px solid var(--border-lit);flex-shrink:0;">
-    <div class="logo" style="border-right:none;padding-right:0;">HF·WATCH<sup>v0.7.1</sup></div>
+    <div class="logo" style="border-right:none;padding-right:0;">HF·WATCH<sup>v0.7.3</sup></div>
     <div class="header-dev-warning" style="font-family:'DM Mono',monospace;font-size:.3rem;color:#cc2222;letter-spacing:.1em;line-height:1;">UNDER DEVELOPMENT · SUBJECT TO CHANGE</div>
   </div>
   <div id="hdr-callsign" class="empty">⚙ SET CALLSIGN</div>
@@ -1008,6 +1008,23 @@ header {
 //   MINOR — new features, backward compatible
 //   PATCH — bug fixes, tweaks, minor adjustments
 //
+// v0.7.3 (2026-04-24)
+//   - Fix: greyline sun icon removed from grid map overlay
+//   - Fix: derived band conditions model completely rewritten
+//       Old model incorrectly rewarded high SFI for 80m/40m day (D-layer hurts low bands)
+//       Old model got 12m/10m night wrong (treated as good; almost always closed)
+//       Old model used hardcoded Kp=2 for derived fallback
+//       New model: band-specific day/night physics, live Kp fed from NOAA fetch
+//   - Fix: renderBands now receives live Kp extracted from kpRaw in fetchAll
+// v0.7.2 (2026-04-24)
+//   - Fix: clock font corrected to Share Tech Mono (was DM Mono — not fixed-width)
+//   - Fix: Kp bar labels now show actual Kp value (was showing positional index 0–8)
+//   - Fix: dead #sun-readout getElementById in updateGreyline() removed
+//   - Fix: dead ternary in dxCallToLatLon() simplified to split('/')[0]
+//   - Fix: empty if-block in logHandleFile() removed
+//   - Dead: _greyMap and _greyCanvas removed (were always null after greyline view removal)
+//   - Dead: renderGreyCanvasOn() wrapper inlined into renderGridGreyCanvas()
+//   - Dead: letter-spacing-REMOVE junk CSS property removed from .msel-btn
 // v0.7.1 (2026-04-23)
 //   - Developer credit updated: "Developed by WNAMT utilizing Claude"
 //   - CRT scanline overlay removed for improved readability
@@ -1040,7 +1057,7 @@ header {
 //   - DX spot count increased to 50 rendered; server requests 100 for filter headroom
 // ══════════════════════════════════════════
 
-const APP_VERSION = '0.7.1';
+const APP_VERSION = '0.7.3';
 // ══════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════
@@ -1235,7 +1252,7 @@ function applyTheme(uiTheme, accentColor) {
   setTimeout(() => {
     try {
       if (window._map) drawGrid(window._map);
-      if (_greyMap && _greyCanvas && _greySun) renderGreyCanvas();
+      if (_gridGreyOn && _greySun) renderGridGreyCanvas();
     } catch(e) {}
   }, 0);
 }
@@ -1475,7 +1492,7 @@ function renderKP(kpData,xml){
     const val=v??0; bar.style.height=Math.max(3,(val/9)*30)+'px';
     if(v!==null){const bc=val<2?'#2eff88':val<4?'#ffd700':val<6?'#ff8800':'#ff3a3a';bar.style.background=bc;bar.style.boxShadow=`0 0 4px ${bc}66`;}
     bars.appendChild(bar);
-    const lbl=document.createElement('span');lbl.textContent=i;nums.appendChild(lbl);
+    const lbl=document.createElement('span');lbl.textContent=v!=null?v.toFixed(1):'–';nums.appendChild(lbl);
   });
 }
 function renderXRay(xrData){
@@ -1511,26 +1528,74 @@ function renderSolarWind(plasma,mag){
 // ══════════════════════════════════════════
 const BAND_META=[{key:'80m-40m',label:'80m/40m'},{key:'30m-20m',label:'30m/20m'},{key:'17m-15m',label:'17m/15m'},{key:'12m-10m',label:'12m/10m'}];
 
-function renderBands(xml,noaa){
+function renderBands(xml,noaa,kp=2){
   const tbody=document.getElementById('band-tbody'), src=document.getElementById('bc-source');
-  if(!xml){renderBandsDerived(noaa?.sfi||70,2);src.textContent='derived';return;}
+  if(!xml){renderBandsDerived(noaa?.sfi||70,kp);src.textContent='derived';return;}
   const nodes=xml.querySelectorAll('calculatedconditions band');
-  if(!nodes.length){renderBandsDerived(parseInt(xv(xml,'solarflux'))||noaa?.sfi||70,parseFloat(xv(xml,'kindex'))||2);src.textContent='derived';return;}
+  if(!nodes.length){renderBandsDerived(parseInt(xv(xml,'solarflux'))||noaa?.sfi||70,parseFloat(xv(xml,'kindex'))||kp);src.textContent='derived';return;}
   const cm={};
   nodes.forEach(b=>{const n=b.getAttribute('name'),t=b.getAttribute('time');if(!cm[n])cm[n]={};cm[n][t]=b.textContent.trim();});
   tbody.innerHTML=BAND_META.map(b=>{const d=cm[b.key]?.day,n=cm[b.key]?.night;return`<tr><td><span class="band-name">${b.label}</span></td><td><span class="${condClass(d)}">${condLabel(d)}</span></td><td><span class="${condClass(n)}">${condLabel(n)}</span></td></tr>`;}).join('');
   src.textContent='HamQSL'; src.style.color='var(--green)';
 }
 function renderBandsDerived(sfi,kp){
-  function calc(mSFI,mKP,tod){
-    if(tod==='day'  &&sfi>=mSFI+30&&kp<=mKP)  return'Good';
-    if(tod==='day'  &&sfi>=mSFI   &&kp<=mKP+1)return'Fair';
-    if(tod==='night'&&sfi>=mSFI-20&&kp<=mKP)  return'Good';
-    if(tod==='night'&&kp<=mKP+1)              return'Fair';
-    return'Poor';
+  // Day propagation:
+  //   Low bands (80m/40m): hurt by D-layer — HIGH SFI = MORE absorption = WORSE during day
+  //   Mid bands (30m/20m): reliable workhorse, open most conditions
+  //   High bands (17m/15m): need moderate SFI, close earlier at night
+  //   Top bands (12m/10m): need high SFI, mostly closed at night
+  function calcDay(band){
+    if(band==='low'){  // 80m/40m — D-layer is the enemy
+      if(kp>=5)                        return'Poor';
+      if(sfi>=130&&kp>=3)              return'Poor';
+      if(sfi>=130)                     return'Fair';   // heavy D-layer
+      if(sfi>=90&&kp<=3)              return'Fair';   // moderate absorption
+      if(kp<=4)                        return'Good';   // low SFI = less D-layer
+      return'Fair';
+    }
+    if(band==='mid'){  // 30m/20m — backbone bands
+      if(kp>=5)                        return'Poor';
+      if(sfi>=70&&kp<=3)              return'Good';
+      if(sfi>=60&&kp<=4)              return'Fair';
+      return'Poor';
+    }
+    if(band==='hi'){   // 17m/15m — needs moderate flux
+      if(kp>=4)                        return'Poor';
+      if(sfi>=100&&kp<=2)             return'Good';
+      if(sfi>=80&&kp<=3)              return'Fair';
+      return'Poor';
+    }
+    if(band==='top'){  // 12m/10m — needs high flux
+      if(kp>=3)                        return'Poor';
+      if(sfi>=130&&kp<=2)             return'Good';
+      if(sfi>=110&&kp<=2)             return'Fair';
+      return'Poor';
+    }
   }
-  const model=[{label:'80m/40m',mSFI:70,mKP:4},{label:'30m/20m',mSFI:90,mKP:3},{label:'17m/15m',mSFI:110,mKP:2},{label:'12m/10m',mSFI:130,mKP:2}];
-  document.getElementById('band-tbody').innerHTML=model.map(b=>{const d=calc(b.mSFI,b.mKP,'day'),n=calc(b.mSFI,b.mKP,'night');return`<tr><td><span class="band-name">${b.label}</span></td><td><span class="${condClass(d)}">${condLabel(d)}</span></td><td><span class="${condClass(n)}">${condLabel(n)}</span></td></tr>`;}).join('');
+  function calcNight(band){
+    if(band==='low'){  // 80m/40m — D-layer gone, usually reliable
+      if(kp>=6)                        return'Poor';
+      if(kp<=4)                        return'Good';
+      return'Fair';
+    }
+    if(band==='mid'){  // 30m/20m
+      if(kp>=5)                        return'Poor';
+      if(sfi>=70&&kp<=3)              return'Good';
+      if(kp<=4)                        return'Fair';
+      return'Poor';
+    }
+    if(band==='hi'){   // 17m/15m — tends to close after dark
+      if(sfi>=110&&kp<=2)             return'Good';
+      if(sfi>=90&&kp<=3)              return'Fair';
+      return'Poor';
+    }
+    if(band==='top'){  // 12m/10m — almost always closed at night
+      if(sfi>=150&&kp<=1)             return'Fair';
+      return'Poor';
+    }
+  }
+  const model=[{label:'80m/40m',band:'low'},{label:'30m/20m',band:'mid'},{label:'17m/15m',band:'hi'},{label:'12m/10m',band:'top'}];
+  document.getElementById('band-tbody').innerHTML=model.map(b=>{const d=calcDay(b.band),n=calcNight(b.band);return`<tr><td><span class="band-name">${b.label}</span></td><td><span class="${condClass(d)}">${condLabel(d)}</span></td><td><span class="${condClass(n)}">${condLabel(n)}</span></td></tr>`;}).join('');
 }
 
 // ── Toast notification ───────────────────────────────────────────────────────
@@ -1633,7 +1698,19 @@ async function fetchAll(){
   ]);
   renderSFI(xml,noaaSolar); renderSSN(xml,noaaSolar); renderKP(kpRaw,xml);
   renderXRay(xray); renderAIndex(xml,noaaSolar); renderSolarWind(plasma,mag);
-  renderBands(xml,noaaSolar); renderAlerts(alerts);
+  // Extract current Kp for derived band conditions
+  let _liveKp = 2;
+  if (kpRaw) {
+    try {
+      let rows = Array.isArray(kpRaw) ? kpRaw : [];
+      if (rows.length && Array.isArray(rows[0]) && isNaN(parseFloat(rows[0][1]))) rows = rows.slice(1);
+      if (rows.length && !Array.isArray(rows[0])) rows = rows.map(r=>[r.time_tag||r.time, r.kp_index??r.kp??r.Kp??r.estimated_kp??null]);
+      const ext = r => { for (const i of [1,2,3]) { const v=parseFloat(r[i]); if (!isNaN(v)&&v>=0&&v<=9) return v; } return null; };
+      const all = rows.map(ext).filter(v => v !== null);
+      if (all.length) _liveKp = all[all.length - 1];
+    } catch(e) {}
+  }
+  renderBands(xml, noaaSolar, _liveKp); renderAlerts(alerts);
   const ok=xml||kpRaw||plasma||noaaSolar;
   const srcs=[xml?'HamQSL':null,noaaSolar?'NOAA':null,kpRaw?'Kp':null].filter(Boolean);
   setStatus(ok?'ok':'stale',ok?`Live — ${srcs.join(' + ')} + SWPC`:'Sources unavailable');
@@ -1720,11 +1797,7 @@ function initMap(){
 // renderGridGreyCanvas — passes map/canvas directly, no global mutation
 function renderGridGreyCanvas(){
   if(!window._map||!_gridGreyCanvas||!_greySun)return;
-  renderGreyCanvasOn(window._map, _gridGreyCanvas);
-}
-
-function renderGreyCanvasOn(targetMap, targetCanvas){
-  renderGreyCanvas(targetMap, targetCanvas);
+  renderGreyCanvas(window._map, _gridGreyCanvas);
 }
 
 // ── Callsign Lookup via HamDB ──
@@ -1902,11 +1975,11 @@ function computeTerminator(sunLat,sunLon){
 // ══════════════════════════════════════════
 // GREYLINE MAP
 // ══════════════════════════════════════════
-let _greyMap=null,_greyCanvas=null,_greySun=null,_greyTick=0;
-function updateGreyline(){_greySun=getSunPosition(new Date());renderGreyCanvas();_greyTick=0;const el=document.getElementById('sun-readout');if(!el)return;const{lat,lon}=_greySun;el.textContent=`☉  Subsolar: ${Math.abs(lat).toFixed(2)}°${lat>=0?'N':'S'}, ${Math.abs(lon).toFixed(2)}°${lon>=0?'E':'W'}   |   Dec: ${lat.toFixed(2)}°`;}
+let _greySun=null,_greyTick=0;
+function updateGreyline(){_greySun=getSunPosition(new Date());renderGreyCanvas();_greyTick=0;}
 function renderGreyCanvas(targetMap, targetCanvas){
-  const map    = targetMap    || _greyMap;
-  const canvas = targetCanvas || _greyCanvas;
+  const map    = targetMap;
+  const canvas = targetCanvas;
   if(!map||!canvas||!_greySun)return;
   const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;if(!W||!H)return;
   ctx.clearRect(0,0,W,H);
@@ -1945,17 +2018,6 @@ function renderGreyCanvas(targetMap, targetCanvas){
     ctx.stroke();
   }
 
-  // Sun symbol on all visible world copies
-  for(const copy of [-1,0,1,2]){
-    let sunPt;try{sunPt=map.latLngToContainerPoint([_greySun.lat,_greySun.lon+copy*360]);}catch(e){continue;}
-    if(sunPt.x<-50||sunPt.x>W+50)continue;
-    ctx.shadowBlur=24;ctx.shadowColor=_tBright;ctx.fillStyle=_tBright;
-    ctx.beginPath();ctx.arc(sunPt.x,sunPt.y,6,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle=_tDim;ctx.lineWidth=1.5;ctx.shadowBlur=0;ctx.stroke();
-    ctx.globalAlpha=0.4;ctx.strokeStyle=_tAmber;
-    for(let a=0;a<8;a++){const ang=a*Math.PI/4;ctx.beginPath();ctx.moveTo(sunPt.x+Math.cos(ang)*9,sunPt.y+Math.sin(ang)*9);ctx.lineTo(sunPt.x+Math.cos(ang)*14,sunPt.y+Math.sin(ang)*14);ctx.stroke();}
-    ctx.globalAlpha=1;
-  }
   ctx.restore();
 }
 
@@ -2257,7 +2319,7 @@ function dxCallToLatLon(call) {
   if (!call) return null;
   const c = call.toUpperCase();
   // Strip portable suffix (/P /M /QRP etc)
-  const base = c.split('/')[c.startsWith('W') || c.startsWith('K') || c.startsWith('N') || c.startsWith('A') ? 0 : 0];
+  const base = c.split('/')[0];
   for (const [pfx, lat, lon] of DXCC_PREFIXES) {
     if (base.startsWith(pfx)) return [lat, lon];
   }
@@ -2786,8 +2848,6 @@ function logHandleFile(file) {
     const text = e.target.result;
 
     const contacts = parseAdif(text);
-    if (contacts.length > 0) {
-    }
 
     if (!contacts.length) {
       alert('No contacts found in that file. Make sure it is a valid ADIF (.adi or .adif) file.');
