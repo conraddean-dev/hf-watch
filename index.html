@@ -128,6 +128,15 @@ header {
 .aurora-hem-title { font-family: var(--font-ui); font-size: .52rem; letter-spacing: .2em; color: var(--text-dim); text-align: center; padding: 5px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .aurora-img { flex: 1; width: 100%; height: 100%; object-fit: contain; display: block; }
 
+/* Solar images view */
+#mv-solar .solar-grid {
+  flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+  gap: 8px; padding: 8px; background: #020208; min-height: 0;
+}
+.solar-panel { display: flex; flex-direction: column; border: 1px solid var(--border-lit); overflow: hidden; background: #000; }
+.solar-panel-title { font-family: var(--font-ui); font-size: .52rem; letter-spacing: .2em; color: var(--text-dim); text-align: center; padding: 5px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.solar-img { flex: 1; width: 100%; height: 100%; object-fit: contain; display: block; }
+
 /* ── SOLAR SIDEBAR ── */
 .solar-sidebar {
   width: 22%; min-width: 240px; max-width: 380px; flex-shrink: 0;
@@ -564,6 +573,7 @@ header {
   #grid-readout { display: none; }
 
   #mv-aurora .aurora-dual { flex-direction: column; }
+  #mv-solar .solar-grid { grid-template-columns: 1fr 1fr; grid-template-rows: repeat(2,auto); }
 
   .dx-band-btn { padding: 5px 9px; font-size: .44rem; }
 
@@ -584,6 +594,7 @@ header {
    ══════════════════════════════════════════ */
 @media (max-width: 480px) {
   .map-sel-bar { flex-wrap: wrap; }
+  #mv-solar .solar-grid { grid-template-columns: 1fr; }
 
   #dx-band-row {
     order: 99; width: 100%; max-width: 100%;
@@ -637,7 +648,7 @@ header {
 <!-- HEADER -->
 <header>
   <div style="display:flex;flex-direction:column;gap:2px;padding-right:24px;border-right:1px solid var(--border-lit);flex-shrink:0;">
-    <div class="logo" style="border-right:none;padding-right:0;">HF·WATCH<sup>v0.7.43</sup></div>
+    <div class="logo" style="border-right:none;padding-right:0;">HF·WATCH<sup>v0.7.44</sup></div>
     <div class="header-dev-warning" style="font-family:'DM Mono',monospace;font-size:.3rem;color:#cc2222;letter-spacing:.1em;line-height:1;">UNDER DEVELOPMENT · SUBJECT TO CHANGE</div>
   </div>
   <div id="hdr-callsign" class="empty">⚙ SET CALLSIGN</div>
@@ -665,6 +676,7 @@ header {
     <div class="map-sel-bar">
       <button class="msel-btn active" data-map="grid">Grid Map</button>
       <button class="msel-btn" data-map="aurora">Aurora</button>
+      <button class="msel-btn" data-map="solar">Solar</button>
       <button class="msel-btn" data-map="weather">Weather</button>
       <div class="msel-sep"></div>
       <button class="dx-live-btn" id="dx-live-btn">◈ DX</button>
@@ -725,6 +737,33 @@ header {
           <div class="aurora-hem">
             <div class="aurora-hem-title">☆ Southern Hemisphere</div>
             <img id="aurora-south" class="aurora-img" src="" alt="SH Aurora" onerror="this.style.opacity='.2'">
+          </div>
+        </div>
+      </div>
+
+      <!-- SOLAR IMAGES -->
+      <div class="map-view" id="mv-solar">
+        <div class="map-sub-bar">
+          <div style="font-family:var(--font-ui);font-size:.58rem;color:var(--amber);">SDO Solar Images</div>
+          <div id="solar-ts" style="font-size:.55rem;color:var(--text-dim);margin-left:12px;"></div>
+          <button class="go-btn" id="solar-refresh" style="margin-left:auto;padding:4px 10px;">↻</button>
+        </div>
+        <div class="solar-grid">
+          <div class="solar-panel">
+            <div class="solar-panel-title">AIA 193 — Hot Corona</div>
+            <img id="sol-193" class="solar-img" src="" alt="AIA 193" onerror="this.style.opacity='.2'">
+          </div>
+          <div class="solar-panel">
+            <div class="solar-panel-title">AIA 304 — Prominences</div>
+            <img id="sol-304" class="solar-img" src="" alt="AIA 304" onerror="this.style.opacity='.2'">
+          </div>
+          <div class="solar-panel">
+            <div class="solar-panel-title">AIA 171 — Magnetic Loops</div>
+            <img id="sol-171" class="solar-img" src="" alt="AIA 171" onerror="this.style.opacity='.2'">
+          </div>
+          <div class="solar-panel">
+            <div class="solar-panel-title">HMI — Sunspots</div>
+            <img id="sol-hmi" class="solar-img" src="" alt="HMI" onerror="this.style.opacity='.2'">
           </div>
         </div>
       </div>
@@ -807,6 +846,15 @@ header {
           <thead><tr><th>Band</th><th>☀ Day</th><th>☾ Night</th></tr></thead>
           <tbody id="band-tbody">
             <tr><td colspan="3" class="ld" style="padding:10px;font-size:.65rem;">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="sb-section">
+        <div class="sb-title">VHF Conditions <span id="vhf-source" style="font-size:.4rem;color:var(--text-dim);"></span></div>
+        <table class="band-table">
+          <tbody id="vhf-tbody">
+            <tr><td colspan="2" class="ld" style="padding:10px;font-size:.65rem;">Loading…</td></tr>
           </tbody>
         </table>
       </div>
@@ -982,6 +1030,12 @@ header {
 //   MINOR — new features, backward compatible
 //   PATCH — bug fixes, tweaks, minor adjustments
 //
+// v0.7.44 (2026-04-24)
+//   - Added: Solar map view — 2×2 grid of SDO images (AIA 193/304/171, HMI white light)
+//     Refreshes every 15 min; manual ↻ button; same pattern as Aurora view
+//   - Added: VHF Conditions section in solar sidebar (between HF Bands and NOAA Alerts)
+//     Sources HamQSL calculatedvhfconditions (Aurora NH, 6m Es NA/EU) when available;
+//     falls back to derived model: aurora from Kp, 6m Es from month, EME from Kp
 // v0.7.43 (2026-04-24)
 //   - Fix: boot goToGrid() was calling map.setView() even with animate=false,
 //     overriding the saved/default map position every reload
@@ -1052,7 +1106,7 @@ header {
 //   - DX spot count increased to 50 rendered; server requests 100 for filter headroom
 // ══════════════════════════════════════════
 
-const APP_VERSION = '0.7.43';
+const APP_VERSION = '0.7.44';
 // ══════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════
@@ -1095,6 +1149,7 @@ function switchMap(id) {
   setTimeout(() => {
     if (id==='grid')    { initMap();        window._map?.invalidateSize(); }
     if (id==='aurora')  { initAuroraView(); }
+    if (id==='solar')   { initSolarView(); }
     if (id==='weather') { initWeatherMap(); _wxMap?.invalidateSize(); }
   }, 60);
 }
@@ -1656,6 +1711,63 @@ function renderAlerts(data) {
 }
 
 // ══════════════════════════════════════════
+// VHF CONDITIONS
+// ══════════════════════════════════════════
+function vhfCondClass(v){
+  if(!v)return'cond cond-U';const l=v.toLowerCase();
+  if(/open|active|good|likely/.test(l))  return'cond cond-G';
+  if(/possible|fair/.test(l))             return'cond cond-F';
+  if(/closed|poor|quiet|unlikely/.test(l))return'cond cond-P';
+  return'cond cond-U';
+}
+function vhfCondLabel(v){ return v?v.toUpperCase().replace('BAND ',''):'–'; }
+
+function renderVHF(xml,noaa,kp){
+  const src=document.getElementById('vhf-source');
+  // Try HamQSL calculatedvhfconditions
+  if(xml){
+    const nodes=xml.querySelectorAll('calculatedvhfconditions phenomenon');
+    if(nodes.length){
+      const cm={};
+      nodes.forEach(n=>{ cm[`${n.getAttribute('name')}|${n.getAttribute('location')}`]=n.textContent.trim(); });
+      const emeVal=kp<=2?'Good':kp<=4?'Fair':'Poor';
+      const rows=[
+        {label:'Aurora NH', val:cm['aurora|northern_hemi']},
+        {label:'6m Es NA',  val:cm['E-Skip|north_america_6m']},
+        {label:'6m Es EU',  val:cm['E-Skip|europe_6m']},
+        {label:'EME',       val:emeVal},
+      ].filter(r=>r.val);
+      if(rows.length>=2){
+        document.getElementById('vhf-tbody').innerHTML=rows.map(r=>
+          `<tr><td><span class="band-name">${r.label}</span></td><td><span class="${vhfCondClass(r.val)}">${vhfCondLabel(r.val)}</span></td></tr>`
+        ).join('');
+        if(src){src.textContent='HamQSL';src.style.color='var(--green)';}
+        return;
+      }
+    }
+  }
+  renderVHFDerived(kp);
+  if(src)src.textContent='derived';
+}
+
+function renderVHFDerived(kp){
+  const month=new Date().getUTCMonth()+1; // 1–12
+  // Aurora scatter: high Kp = Active (green — good for VHF aurora DX)
+  const auroraV=kp>=5?'Active':kp>=3?'Possible':'Quiet';
+  const auroraC=kp>=5?'cond cond-G':kp>=3?'cond cond-F':'cond cond-P';
+  // 6m Sporadic-E: Northern Hemisphere seasonal model (peak May–Aug)
+  const esV=(month>=5&&month<=8)?'Likely':
+            (month===4||month===9||month<=1||month>=11)?'Possible':'Unlikely';
+  // EME: low Kp = quiet ionosphere = better Earth-Moon-Earth
+  const emeV=kp<=2?'Good':kp<=4?'Fair':'Poor';
+  document.getElementById('vhf-tbody').innerHTML=[
+    {label:'Aurora',  v:auroraV, cls:auroraC},
+    {label:'6m Es',   v:esV,     cls:vhfCondClass(esV)},
+    {label:'EME',     v:emeV,    cls:vhfCondClass(emeV)},
+  ].map(r=>`<tr><td><span class="band-name">${r.label}</span></td><td><span class="${r.cls}">${r.v.toUpperCase()}</span></td></tr>`).join('');
+}
+
+// ══════════════════════════════════════════
 // MAIN FETCH
 // ══════════════════════════════════════════
 let _refreshTimer=null;
@@ -1681,7 +1793,7 @@ async function fetchAll(){
       if (all.length) _liveKp = all[all.length - 1];
     } catch(e) {}
   }
-  renderBands(xml, noaaSolar, _liveKp); renderAlerts(alerts);
+  renderBands(xml, noaaSolar, _liveKp); renderVHF(xml, noaaSolar, _liveKp); renderAlerts(alerts);
   const ok=xml||kpRaw||plasma||noaaSolar;
   const srcs=[xml?'HamQSL':null,noaaSolar?'NOAA':null,kpRaw?'Kp':null].filter(Boolean);
   setStatus(ok?'ok':'stale',ok?`Live — ${srcs.join(' + ')} + SWPC`:'Sources unavailable');
@@ -2017,6 +2129,38 @@ function updateAuroraInfo(){
     stEl.textContent=kp>=5?`G${Math.min(5,Math.floor(kp-4)+1)} Storm`:kp>=4?'Active':kp>=2?'Unsettled':'Quiet';stEl.style.color=c;
     if(S.grid&&vEl){const qLat=Math.abs(gridToLatLng(S.grid)[0]),boundary=Math.max(40,66.5-kp*2.5);if(qLat>=boundary){vEl.textContent=`☑ Aurora possible at ${S.grid}`;vEl.style.color='var(--green)';}else{vEl.textContent=`${S.grid} needs Kp ≥ ${Math.ceil((66.5-qLat)/2.5)}`;vEl.style.color='var(--text-dim)';}}
   });
+}
+
+// ══════════════════════════════════════════
+// SOLAR IMAGES  (SDO/NASA — updates ~15 min)
+// ══════════════════════════════════════════
+const SOLAR_IMGS = [
+  { id:'sol-193', url:'https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_0193.jpg' },
+  { id:'sol-304', url:'https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_0304.jpg' },
+  { id:'sol-171', url:'https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_0171.jpg' },
+  { id:'sol-hmi', url:'https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_HMIIC.jpg' },
+];
+let _solarInited=false, _solarAutoTimer=null;
+
+function initSolarView(){
+  refreshSolarImages();
+  if(!_solarInited){
+    _solarInited=true;
+    _solarAutoTimer=setInterval(refreshSolarImages,900000); // refresh every 15 min
+    document.getElementById('solar-refresh').addEventListener('click',refreshSolarImages);
+  }
+}
+
+function refreshSolarImages(){
+  const ts=Date.now();
+  SOLAR_IMGS.forEach(({id,url})=>{
+    const img=document.getElementById(id); if(!img)return;
+    img.style.opacity='.4';
+    img.src=`${url}?t=${ts}`;
+    img.onload=()=>img.style.opacity='1';
+  });
+  const el=document.getElementById('solar-ts');
+  if(el){const now=new Date();el.textContent=`SDO/NASA · ${String(now.getUTCHours()).padStart(2,'0')}:${String(now.getUTCMinutes()).padStart(2,'0')} UTC`;}
 }
 
 // ══════════════════════════════════════════
