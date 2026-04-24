@@ -105,6 +105,8 @@ header {
   display: flex; align-items: center; gap: 4px; padding: 0 12px;
   background: var(--bg2); border-bottom: 1px solid var(--border-lit);
 }
+/* On desktop, toolbar-main is invisible to layout — children join map-sel-bar flex row directly */
+#toolbar-main { display: contents; }
 .msel-btn {
   font-family: var(--font-ui); font-size: .54rem; font-weight: 600;
   letter-spacing: var(--ui-letter-spacing); padding: 7px 14px; background: transparent;
@@ -144,7 +146,6 @@ header {
 .solar-panel { display: flex; flex-direction: column; border: 1px solid var(--border-lit); overflow: hidden; background: #000; }
 .solar-panel-title { font-family: var(--font-ui); font-size: .52rem; letter-spacing: .2em; color: var(--text-dim); text-align: center; padding: 5px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .solar-img { flex: 1; width: 100%; height: 100%; object-fit: contain; display: block; }
-
 /* ── SOLAR SIDEBAR ── */
 .solar-sidebar {
   width: 22%; min-width: 240px; max-width: 380px; flex-shrink: 0;
@@ -557,11 +558,17 @@ body.panel-open .leaflet-control-zoom { display: none !important; }
   #clock-time { font-size: .82rem; letter-spacing: .04em; }
 
   .map-sel-bar {
-    height: auto; min-height: 42px; padding: 4px 8px;
-    gap: 4px; overflow-x: auto; flex-wrap: nowrap;
-    -webkit-overflow-scrolling: touch;
+    height: auto; min-height: 42px; padding: 4px 0;
+    gap: 0; flex-wrap: wrap;
   }
-  .map-sel-bar::-webkit-scrollbar { height: 0; }
+  /* toolbar-main: single horizontally scrolling row containing all main controls */
+  #toolbar-main {
+    display: flex; flex: 0 0 100%; order: 1;
+    flex-wrap: nowrap; align-items: center; gap: 4px;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    padding: 0 8px;
+  }
+  #toolbar-main::-webkit-scrollbar { height: 0; }
   .map-sel-bar .msel-sep { display: none; }
 
   .msel-btn     { padding: 6px 9px; font-size: .44rem; letter-spacing: .08em; }
@@ -588,7 +595,15 @@ body.panel-open .leaflet-control-zoom { display: none !important; }
   #mv-aurora .aurora-dual { flex-direction: column; overflow-y: auto; }
   #mv-aurora .aurora-hem  { flex: none; height: auto; }
   .aurora-img { height: 80vw; flex: none; }
-  #mv-solar .solar-grid { grid-template-columns: 1fr 1fr; grid-template-rows: repeat(2,auto); overflow-y: auto; }
+
+  /* Solar: break flex/grid circular height dependency with concrete vw image heights */
+  #mv-solar .solar-grid {
+    grid-template-columns: 1fr 1fr; grid-template-rows: auto;
+    align-content: start;   /* rows don't stretch — content drives height */
+    overflow-y: auto; min-height: unset;
+  }
+  .solar-panel { height: auto; overflow: visible; }
+  .solar-img   { height: 45vw; flex: none; }
 
   .dx-band-btn { padding: 5px 9px; font-size: .44rem; }
 
@@ -608,13 +623,12 @@ body.panel-open .leaflet-control-zoom { display: none !important; }
    PORTRAIT ≤480px — band row + bottom sheet
    ══════════════════════════════════════════ */
 @media (max-width: 480px) {
-  .map-sel-bar { flex-wrap: wrap; }
-  #mv-solar .solar-grid { grid-template-columns: 1fr; overflow-y: auto; }
-  .solar-img { height: 90vw; flex: none; }
+  #mv-solar .solar-grid { grid-template-columns: 1fr; }
+  .solar-img { height: 90vw; }
   .solar-panel { height: auto; }
 
   #dx-band-row {
-    order: 99; width: 100%; max-width: 100%;
+    order: 2; width: 100%; max-width: 100%;
     overflow-x: auto; padding: 4px 4px 5px;
     gap: 5px; border-top: 1px solid var(--border);
     flex-wrap: nowrap; align-items: center;
@@ -665,7 +679,7 @@ body.panel-open .leaflet-control-zoom { display: none !important; }
 <!-- HEADER -->
 <header>
   <div style="display:flex;flex-direction:column;gap:2px;padding-right:24px;border-right:1px solid var(--border-lit);flex-shrink:0;">
-    <div class="logo" style="border-right:none;padding-right:0;">HF·WATCH<sup>v0.7.48</sup></div>
+    <div class="logo" style="border-right:none;padding-right:0;">HF·WATCH<sup>v0.7.49</sup></div>
     <div class="header-dev-warning" style="font-family:'DM Mono',monospace;font-size:.3rem;color:#cc2222;letter-spacing:.1em;line-height:1;">UNDER DEVELOPMENT · SUBJECT TO CHANGE</div>
   </div>
   <div id="hdr-callsign" class="empty">⚙ SET CALLSIGN</div>
@@ -691,28 +705,30 @@ body.panel-open .leaflet-control-zoom { display: none !important; }
 
     <!-- Map selector bar — single unified row -->
     <div class="map-sel-bar">
-      <button class="msel-btn active" data-map="grid">Grid Map</button>
-      <button class="msel-btn" data-map="aurora">Aurora</button>
-      <button class="msel-btn" data-map="solar">Solar</button>
-      <button class="msel-btn" data-map="weather">Weather</button>
-      <div class="msel-sep"></div>
-      <button class="dx-live-btn" id="dx-live-btn">◈ DX</button>
+      <div id="toolbar-main">
+        <button class="msel-btn active" data-map="grid">Grid Map</button>
+        <button class="msel-btn" data-map="aurora">Aurora</button>
+        <button class="msel-btn" data-map="solar">Solar</button>
+        <button class="msel-btn" data-map="weather">Weather</button>
+        <div class="msel-sep"></div>
+        <button class="dx-live-btn" id="dx-live-btn">◈ DX</button>
+        <select id="dx-mode-filter" title="Filter by mode" style="display:none;">
+          <option value="all">FILTER</option>
+          <option value="ssb">SSB</option>
+          <option value="cw">CW</option>
+          <option value="digi">DIGI</option>
+        </select>
+        <button class="log-live-btn" id="log-live-btn">◉ LOG</button>
+        <span id="log-count"></span>
+        <div id="log-controls">
+          <button class="go-btn cs-clear-btn" id="log-clear-btn" style="padding:4px 10px;font-size:.46rem;display:none;">✕ CLEAR</button>
+        </div>
+        <input type="file" id="log-file-input" accept=".adi,.adif" style="display:none;">
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+          <button class="icon-btn" id="refresh-btn" title="Refresh data" style="width:26px;height:26px;font-size:.85rem;">↻</button>
+        </div>
+      </div>
       <div id="dx-band-row"></div>
-      <select id="dx-mode-filter" title="Filter by mode" style="display:none;">
-        <option value="all">FILTER</option>
-        <option value="ssb">SSB</option>
-        <option value="cw">CW</option>
-        <option value="digi">DIGI</option>
-      </select>
-      <button class="log-live-btn" id="log-live-btn">◉ LOG</button>
-      <span id="log-count"></span>
-      <div id="log-controls">
-        <button class="go-btn cs-clear-btn" id="log-clear-btn" style="padding:4px 10px;font-size:.46rem;display:none;">✕ CLEAR</button>
-      </div>
-      <input type="file" id="log-file-input" accept=".adi,.adif" style="display:none;">
-      <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
-        <button class="icon-btn" id="refresh-btn" title="Refresh data" style="width:26px;height:26px;font-size:.85rem;">↻</button>
-      </div>
     </div>
 
     <!-- Map views -->
@@ -1047,6 +1063,16 @@ body.panel-open .leaflet-control-zoom { display: none !important; }
 //   MINOR — new features, backward compatible
 //   PATCH — bug fixes, tweaks, minor adjustments
 //
+// v0.7.49 (2026-04-24)
+//   - Fix: toolbar LOG/REFRESH buttons no longer wrap to second row on mobile.
+//     All main toolbar controls wrapped in #toolbar-main (display:contents on
+//     desktop; flex:0 0 100% order:1 scrollable row on ≤640px). dx-band-row
+//     stays as order:2 second row beneath. Single horizontal scroll, no wrap.
+//   - Fix: solar images now fully visible and scrollable on mobile.
+//     Root cause: solar-img had flex:1;height:100% creating a circular size
+//     dependency with auto grid rows — images collapsed to near-zero. Fixed
+//     with concrete vw-based heights (45vw 2-col, 90vw 1-col) + align-content:start
+//     on the grid so rows are content-sized not stretched.
 // v0.7.48 (2026-04-24)
 //   - Fix: body uses 100dvh (dynamic viewport height) instead of 100vh so mobile
 //     browser chrome (address/tab bar) no longer obscures top/bottom content
@@ -1153,7 +1179,7 @@ body.panel-open .leaflet-control-zoom { display: none !important; }
 //   - DX spot count increased to 50 rendered; server requests 100 for filter headroom
 // ══════════════════════════════════════════
 
-const APP_VERSION = '0.7.48';
+const APP_VERSION = '0.7.49';
 // ══════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════
