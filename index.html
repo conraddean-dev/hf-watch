@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>HF·WATCH — Ham Radio Digital Signage</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Orbitron:wght@400;600;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -40,7 +40,15 @@ body {
   background: var(--bg-solid);
   color: var(--text);
   font-family: 'DM Mono', monospace;
-  display: flex; flex-direction: column; height: 100vh;
+  display: flex; flex-direction: column;
+  /* dvh = dynamic viewport height — excludes browser chrome on mobile.
+     Falls back to 100vh on older browsers that don't support dvh. */
+  height: 100vh;
+  height: 100dvh;
+  /* iOS notch / home indicator safe areas */
+  padding-top:    env(safe-area-inset-top);
+  padding-left:   env(safe-area-inset-left);
+  padding-right:  env(safe-area-inset-right);
 }
 
 
@@ -220,7 +228,10 @@ header {
 /* ── STATUS BAR ── */
 #status-bar {
   position: fixed; bottom: 0; left: 0; right: 0;
-  display: flex; align-items: center; gap: 14px; padding: 5px 18px;
+  display: flex; align-items: center; gap: 14px;
+  padding: 5px 18px;
+  /* Push above iOS home indicator */
+  padding-bottom: max(5px, env(safe-area-inset-bottom));
   background: var(--bg2); border-top: 1px solid var(--border);
   font-size: .55rem; color: var(--text-dim); z-index: 50;
 }
@@ -420,6 +431,8 @@ header {
 .leaflet-control-zoom a { background: var(--bg2); color: var(--amber); border-color: var(--border-lit); }
 .leaflet-control-zoom a:hover { background: var(--bg3); }
 .leaflet-control-attribution { background: rgba(7,7,5,.7) !important; color: var(--text-dim) !important; font-size: .5rem !important; }
+/* Hide zoom control whenever any panel (settings, sidebar) obscures the map */
+body.panel-open .leaflet-control-zoom { display: none !important; }
 
 .ld { color: var(--text-dim); animation: ld 1s step-end infinite; }
 @keyframes ld { 0%,100%{opacity:1} 50%{opacity:0} }
@@ -572,8 +585,10 @@ header {
   .cs-input { width: 76px; }
   #grid-readout { display: none; }
 
-  #mv-aurora .aurora-dual { flex-direction: column; }
-  #mv-solar .solar-grid { grid-template-columns: 1fr 1fr; grid-template-rows: repeat(2,auto); }
+  #mv-aurora .aurora-dual { flex-direction: column; overflow-y: auto; }
+  #mv-aurora .aurora-hem  { flex: none; height: auto; }
+  .aurora-img { height: 80vw; flex: none; }
+  #mv-solar .solar-grid { grid-template-columns: 1fr 1fr; grid-template-rows: repeat(2,auto); overflow-y: auto; }
 
   .dx-band-btn { padding: 5px 9px; font-size: .44rem; }
 
@@ -594,7 +609,9 @@ header {
    ══════════════════════════════════════════ */
 @media (max-width: 480px) {
   .map-sel-bar { flex-wrap: wrap; }
-  #mv-solar .solar-grid { grid-template-columns: 1fr; }
+  #mv-solar .solar-grid { grid-template-columns: 1fr; overflow-y: auto; }
+  .solar-img { height: 90vw; flex: none; }
+  .solar-panel { height: auto; }
 
   #dx-band-row {
     order: 99; width: 100%; max-width: 100%;
@@ -648,7 +665,7 @@ header {
 <!-- HEADER -->
 <header>
   <div style="display:flex;flex-direction:column;gap:2px;padding-right:24px;border-right:1px solid var(--border-lit);flex-shrink:0;">
-    <div class="logo" style="border-right:none;padding-right:0;">HF·WATCH<sup>v0.7.47</sup></div>
+    <div class="logo" style="border-right:none;padding-right:0;">HF·WATCH<sup>v0.7.48</sup></div>
     <div class="header-dev-warning" style="font-family:'DM Mono',monospace;font-size:.3rem;color:#cc2222;letter-spacing:.1em;line-height:1;">UNDER DEVELOPMENT · SUBJECT TO CHANGE</div>
   </div>
   <div id="hdr-callsign" class="empty">⚙ SET CALLSIGN</div>
@@ -1030,6 +1047,15 @@ header {
 //   MINOR — new features, backward compatible
 //   PATCH — bug fixes, tweaks, minor adjustments
 //
+// v0.7.48 (2026-04-24)
+//   - Fix: body uses 100dvh (dynamic viewport height) instead of 100vh so mobile
+//     browser chrome (address/tab bar) no longer obscures top/bottom content
+//   - Fix: viewport meta updated to viewport-fit=cover for iOS notch/home indicator
+//   - Fix: status bar gets padding-bottom:max(5px,env(safe-area-inset-bottom))
+//   - Fix: Leaflet zoom +/- buttons hidden (body.panel-open) whenever settings
+//     overlay or mobile sidebar is open — they were showing through at z-index 1000
+//   - Fix: Aurora/Solar views now scroll on mobile — images given natural vw-based
+//     height instead of flex:1 shrink, containers set overflow-y:auto
 // v0.7.47 (2026-04-24)
 //   - Perf: greyline rendering was calling map.containerPointToLatLng([0, y]) once
 //     per canvas row (≈1080 Leaflet API calls per frame on a 1080p display), each
@@ -1127,7 +1153,7 @@ header {
 //   - DX spot count increased to 50 rendered; server requests 100 for filter headroom
 // ══════════════════════════════════════════
 
-const APP_VERSION = '0.7.47';
+const APP_VERSION = '0.7.48';
 // ══════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════
@@ -1338,6 +1364,7 @@ function openSettings() {
   document.querySelectorAll('.sp-accent-swatch').forEach(sw =>
     sw.classList.toggle('active', sw.dataset.accent === S.accentColor));
   document.getElementById('settings-overlay').classList.add('open');
+  document.body.classList.add('panel-open');
   const focusEl = S.callsign ? 's-grid' : 's-call';
   setTimeout(() => document.getElementById(focusEl).focus(), 80);
 }
@@ -1378,6 +1405,7 @@ function closeSettings() {
   // Reset show buttons back to eye icon
   document.querySelectorAll('[onclick^="toggleKeyVis"]').forEach(btn => btn.textContent = '👁');
   document.getElementById('settings-overlay').classList.remove('open');
+  document.body.classList.remove('panel-open');
 }
 
 // Open on settings button
@@ -3162,12 +3190,15 @@ function logWireControls() {
     backdrop.classList.add('open');
     fab.classList.add('open');
     fab.textContent = '✕ DATA';
+    // Hide zoom control when sidebar covers the map (mobile only)
+    if (window.innerWidth <= 960) document.body.classList.add('panel-open');
   }
   function closeSidebar() {
     sidebar.classList.remove('open');
     backdrop.classList.remove('open');
     fab.classList.remove('open');
     fab.textContent = '☀ DATA';
+    document.body.classList.remove('panel-open');
   }
 
   fab.addEventListener('click', () =>
