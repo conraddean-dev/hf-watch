@@ -1310,14 +1310,24 @@ const S = {
 // CLOCK
 // ══════════════════════════════════════════
 const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+// Cache clock DOM elements — avoids 3 getElementById calls per second
+const _clockTimeEl  = document.getElementById('clock-time');
+const _clockDateEl  = document.getElementById('clock-date');
+const _clockLocalEl = document.getElementById('clock-local');
+// Cache timezone abbreviation — changes only at DST transitions (≤2×/year)
+let _tzAbbr = '', _tzAbbrHour = -1;
 function tickClock() {
   const d = new Date();
   const h=String(d.getUTCHours()).padStart(2,'0'), m=String(d.getUTCMinutes()).padStart(2,'0'), s=String(d.getUTCSeconds()).padStart(2,'0');
-  document.getElementById('clock-time').textContent = `${h}:${m}:${s}`;
-  document.getElementById('clock-date').textContent = `${d.getUTCFullYear()} ${MONTHS[d.getUTCMonth()]} ${String(d.getUTCDate()).padStart(2,'0')} UTC`;
+  _clockTimeEl.textContent = `${h}:${m}:${s}`;
+  _clockDateEl.textContent = `${d.getUTCFullYear()} ${MONTHS[d.getUTCMonth()]} ${String(d.getUTCDate()).padStart(2,'0')} UTC`;
   const localStr = d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false});
-  const tzAbbr = d.toLocaleTimeString('en-US',{timeZoneName:'short'}).split(' ').pop();
-  document.getElementById('clock-local').textContent = `${localStr} ${tzAbbr}`;
+  const localHour = d.getHours();
+  if (localHour !== _tzAbbrHour) {
+    _tzAbbr = d.toLocaleTimeString('en-US',{timeZoneName:'short'}).split(' ').pop();
+    _tzAbbrHour = localHour;
+  }
+  _clockLocalEl.textContent = `${localStr} ${_tzAbbr}`;
 }
 setInterval(tickClock,1000); tickClock();
 
@@ -1862,14 +1872,23 @@ document.addEventListener('touchstart', (e) => {
   }
 }, { passive: true });
 
+let _lastAlertsHash = '';   // skip DOM rebuild when alerts data is unchanged
+
 function renderAlerts(data) {
   const el = document.getElementById('alerts-list');
   if (!data || !data.length) {
+    if (_lastAlertsHash === 'none') return;  // already showing no-alerts
+    _lastAlertsHash = 'none';
     el.innerHTML = '<span style="color:var(--green);font-size:.66rem;">✓ No active alerts</span>';
     document.getElementById('alert-ct').textContent = '';
     return;
   }
   const items = data.slice(0, 6);
+  // Cheap signature — join issue_times; rebuild only when alerts actually change
+  const sig = items.map(a => a.issue_time || '').join('|');
+  if (sig === _lastAlertsHash) return;
+  _lastAlertsHash = sig;
+
   document.getElementById('alert-ct').textContent = `(${items.length})`;
   el.innerHTML = items.map((a, i) => {
     const fullMsg  = (a.message || '').trim();
@@ -2001,6 +2020,7 @@ function renderVHFDerived(kp){
 // MAIN FETCH
 // ══════════════════════════════════════════
 let _refreshTimer=null;
+let _lastKp = 2; // cached Kp from last fetchAll — shared with Aurora view to avoid duplicate fetch
 async function fetchAll(){
   setStatus('loading','Fetching space weather…');
   const [xml,kpRaw,plasma,mag,xray,alerts,noaaSolar]=await Promise.all([
@@ -2023,6 +2043,7 @@ async function fetchAll(){
       if (all.length) _liveKp = all[all.length - 1];
     } catch(e) {}
   }
+  _lastKp = _liveKp; // cache for Aurora view re-use
   renderBands(xml, noaaSolar, _liveKp); renderVHF(xml, noaaSolar, _liveKp); renderAlerts(alerts);
   const ok=xml||kpRaw||plasma||noaaSolar;
   const srcs=[xml?'HamQSL':null,noaaSolar?'NOAA':null,kpRaw?'Kp':null].filter(Boolean);
@@ -2226,6 +2247,7 @@ function drawGrid(map){
     for(let lon=lonMin;lon<=lonMax;lon+=20) fl.push(L.polyline([[-90,lon],[90,lon]],{color:cLine,weight:1.5,opacity:.28}));
     for(let lat=-90;lat<=90;lat+=10) fl.push(L.polyline([[lat,lonMin],[lat,lonMax]],{color:cLine,weight:1.5,opacity:.28}));
     if(showL){
+      const cFontUI = themeColor('--font-ui'); // read getComputedStyle once, not per-marker
       for(let lon=lonMin;lon<lonMax;lon+=20) for(let lat=-90;lat<90;lat+=10){
         const clat=lat+5,clon=lon+10;
         if(bb.contains([clat,clon])){
@@ -2233,7 +2255,7 @@ function drawGrid(map){
           const normLon = ((((lon + 180) % 360) + 360) % 360) - 180;
           const fi = Math.floor((normLon + 180) / 20);  // 0-17
           const fj = Math.floor((lat   + 90)  / 10);   // 0-17
-          fl.push(L.marker([clat,clon],{icon:L.divIcon({html:`<div style="font-family:${themeColor("--font-ui")};font-size:11px;color:${cLabel};opacity:0.75;font-weight:700;pointer-events:none;transform:translate(-50%,-50%)">${String.fromCharCode(65+fi)+String.fromCharCode(65+fj)}</div>`,iconSize:[0,0],className:''})}));
+          fl.push(L.marker([clat,clon],{icon:L.divIcon({html:`<div style="font-family:${cFontUI};font-size:11px;color:${cLabel};opacity:0.75;font-weight:700;pointer-events:none;transform:translate(-50%,-50%)">${String.fromCharCode(65+fi)+String.fromCharCode(65+fj)}</div>`,iconSize:[0,0],className:''})}));
         }
       }
     }
@@ -2370,14 +2392,13 @@ function refreshAuroraImages(){
   const el=document.getElementById('aurora-ts');if(el){const now=new Date();el.textContent=`NOAA OVATION · ${String(now.getUTCHours()).padStart(2,'0')}:${String(now.getUTCMinutes()).padStart(2,'0')} UTC`;}
 }
 function updateAuroraInfo(){
-  safeFetch(`${NOAA}/products/noaa-planetary-k-index.json`).then(kpData=>{
-    if(!kpData)return;const rows=(Array.isArray(kpData)?kpData:[]).filter(r=>Array.isArray(r)&&!isNaN(parseFloat(r[1])));if(!rows.length)return;
-    const kp=parseFloat(rows[rows.length-1][1]),c=kp<3?'var(--green)':kp<5?'var(--yellow)':'var(--red)';
-    const kpEl=document.getElementById('aurora-kp-display'),stEl=document.getElementById('aurora-storm'),vEl=document.getElementById('aurora-vis');
-    if(!kpEl)return; kpEl.textContent=`Kp  ${kp.toFixed(1)}`;kpEl.style.color=c;
-    stEl.textContent=kp>=5?`G${Math.min(5,Math.floor(kp-4)+1)} Storm`:kp>=4?'Active':kp>=2?'Unsettled':'Quiet';stEl.style.color=c;
-    if(S.grid&&vEl){const qLat=Math.abs(gridToLatLng(S.grid)[0]),boundary=Math.max(40,66.5-kp*2.5);if(qLat>=boundary){vEl.textContent=`☑ Aurora possible at ${S.grid}`;vEl.style.color='var(--green)';}else{vEl.textContent=`${S.grid} needs Kp ≥ ${Math.ceil((66.5-qLat)/2.5)}`;vEl.style.color='var(--text-dim)';}}
-  });
+  // Reuse Kp cached by fetchAll — eliminates a duplicate NOAA network request
+  const kp = _lastKp;
+  const c=kp<3?'var(--green)':kp<5?'var(--yellow)':'var(--red)';
+  const kpEl=document.getElementById('aurora-kp-display'),stEl=document.getElementById('aurora-storm'),vEl=document.getElementById('aurora-vis');
+  if(!kpEl)return; kpEl.textContent=`Kp  ${kp.toFixed(1)}`;kpEl.style.color=c;
+  stEl.textContent=kp>=5?`G${Math.min(5,Math.floor(kp-4)+1)} Storm`:kp>=4?'Active':kp>=2?'Unsettled':'Quiet';stEl.style.color=c;
+  if(S.grid&&vEl){const qLat=Math.abs(gridToLatLng(S.grid)[0]),boundary=Math.max(40,66.5-kp*2.5);if(qLat>=boundary){vEl.textContent=`☑ Aurora possible at ${S.grid}`;vEl.style.color='var(--green)';}else{vEl.textContent=`${S.grid} needs Kp ≥ ${Math.ceil((66.5-qLat)/2.5)}`;vEl.style.color='var(--text-dim)';}}
 }
 
 // ══════════════════════════════════════════
@@ -2530,7 +2551,6 @@ let _dxModeFilter = 'all';       // mode filter: 'all' | 'ssb' | 'cw' | 'digi'
 let _dxCanvas = [];              // [{spot, group, band, addedAt, key, fading}]
 let _dxTimer = null;             // refresh countdown timer
 let _dxTick = 0;
-let _dxExpireTimer = null;       // 1s ticker for lifetime expiry
 let _dxOpenPopup = null;         // currently visible label marker
 
 const DX_LIFETIME_MS = 3 * 60 * 1000;
@@ -2748,10 +2768,17 @@ function dxToggle() {
     dxFetch();
     _dxTick = S.dxRefresh;
     _dxTimer = setInterval(dxTick, 1000);
-    _dxExpireTimer = setInterval(dxExpireTick, 1000);
+    // Register map click-to-dismiss once per activation — not on every fetch
+    const map = window._map;
+    if (map) {
+      if (window._dxMapClickHandler) map.off('click', window._dxMapClickHandler);
+      window._dxMapClickHandler = () => {
+        if (_dxOpenPopup) { map.removeLayer(_dxOpenPopup); _dxOpenPopup = null; }
+      };
+      map.on('click', window._dxMapClickHandler);
+    }
   } else {
     clearInterval(_dxTimer); _dxTimer = null;
-    clearInterval(_dxExpireTimer); _dxExpireTimer = null;
     dxClearCanvas();
     // Reset mode filter
     _dxModeFilter = 'all';
@@ -2923,22 +2950,16 @@ function dxMergeSpots(newSpots) {
     .filter(s => dxModeMatch(s))
     .filter(s => !existingKeys.has(dxSpotKey(s)));
 
+  // Sort active entries by age once up-front — avoids O(n²) filter+sort inside candidate loop
+  const activeSorted = _dxCanvas.filter(e => !e.fading).sort((a, b) => a.addedAt - b.addedAt);
+
   for (const spot of candidates) {
     // Enforce cap — fade oldest non-fading entry first
-    const active = _dxCanvas.filter(e => !e.fading);
-    if (active.length >= DX_MAX_SPOTS) {
-      active.sort((a, b) => a.addedAt - b.addedAt);
-      dxFadeEntry(active[0]);
+    if (activeSorted.length >= DX_MAX_SPOTS) {
+      dxFadeEntry(activeSorted.shift());
     }
     dxAddSpot(spot, now);
   }
-
-  // Register map click-to-dismiss popup
-  if (window._dxMapClickHandler) map.off('click', window._dxMapClickHandler);
-  window._dxMapClickHandler = () => {
-    if (_dxOpenPopup) { map.removeLayer(_dxOpenPopup); _dxOpenPopup = null; }
-  };
-  map.on('click', window._dxMapClickHandler);
 }
 
 // ── Re-apply mode filter to visible canvas (filter change, no re-fetch) ──
@@ -2959,14 +2980,6 @@ function dxApplyBandVisibility() {
     if (visible && !map.hasLayer(entry.group)) entry.group.addTo(map);
     if (!visible && map.hasLayer(entry.group)) map.removeLayer(entry.group);
   });
-}
-
-// ── Expire old spots (called every second while DX active) ──
-function dxExpireTick() {
-  const now = Date.now();
-  _dxCanvas
-    .filter(e => !e.fading && (now - e.addedAt) >= DX_LIFETIME_MS)
-    .forEach(e => dxFadeEntry(e));
 }
 
 // ── Wire DX toggle button (called after initMap) ──
@@ -3125,11 +3138,13 @@ function logRender() {
   document.getElementById('log-count').textContent = `${rendered} contacts`;
   document.getElementById('sp-log-count').textContent = `${rendered} contacts loaded`;
 
-  if (window._logMapClickHandler) map.off('click', window._logMapClickHandler);
-  window._logMapClickHandler = () => {
-    if (_logOpenPopup) { map.removeLayer(_logOpenPopup); _logOpenPopup = null; }
-  };
-  map.on('click', window._logMapClickHandler);
+  // Map click-to-dismiss popup — registered once, not on every render
+  if (!window._logMapClickHandler) {
+    window._logMapClickHandler = () => {
+      if (_logOpenPopup) { map.removeLayer(_logOpenPopup); _logOpenPopup = null; }
+    };
+    map.on('click', window._logMapClickHandler);
+  }
 }
 
 // ── Load contacts from localStorage on startup ───────────────────────────────
