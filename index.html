@@ -106,14 +106,6 @@ header {
 .msel-btn:hover { border-color: var(--amber-dim); color: var(--amber); }
 .msel-btn.active { background: var(--amber-glow); border-color: var(--amber); color: var(--amber-bright); }
 .msel-sep { width: 1px; height: 24px; background: var(--border-lit); margin: 0 6px; }
-.msel-play {
-  font-family: var(--font-ui); font-size: .54rem; letter-spacing: var(--ui-letter-spacing);
-  padding: 7px 14px; background: var(--amber-glow); border: 1px solid var(--amber-dim);
-  color: var(--amber); cursor: pointer; transition: all .15s; white-space: nowrap;
-}
-.msel-play:hover { background: rgba(255,170,0,.22); border-color: var(--amber); }
-.msel-play.playing { border-color: var(--green); color: var(--green); background: rgba(46,255,136,.1); }
-#auto-countdown { font-size: .52rem; color: var(--text-dim); margin-left: 6px; min-width: 28px; }
 
 /* Per-map sub-toolbars */
 .map-sub-bar {
@@ -426,8 +418,6 @@ header {
 ::-webkit-scrollbar-track { background: var(--bg-solid); }
 ::-webkit-scrollbar-thumb { background: var(--border-lit); }
 ::-webkit-scrollbar-thumb:hover { background: var(--amber-dim); }
-.wx-frame-bar { font-size: .6rem; color: var(--text-dim); }
-.wx-now { color: var(--yellow); font-family: var(--font-ui); font-size: .54rem; letter-spacing: .08em; }
 .wx-mode-btn.active { border-color: var(--amber); color: var(--amber); background: var(--amber-glow); }
 
 /* ── Toast notification ── */
@@ -553,7 +543,6 @@ header {
   .map-sel-bar .msel-sep { display: none; }
 
   .msel-btn     { padding: 6px 9px; font-size: .44rem; letter-spacing: .08em; }
-  .msel-play    { padding: 6px 9px; font-size: .44rem; }
   .dx-live-btn  { padding: 6px 9px; }
   .log-live-btn { padding: 6px 9px; }
 
@@ -634,7 +623,7 @@ header {
 
 /* ── Touch optimisation ── */
 @media (hover: none) {
-  button, .go-btn, .msel-btn, .msel-play,
+  button, .go-btn, .msel-btn,
   .dx-live-btn, .log-live-btn, .icon-btn,
   .dx-band-btn, .wx-mode-btn, .ckl {
     touch-action: manipulation;
@@ -648,7 +637,7 @@ header {
 <!-- HEADER -->
 <header>
   <div style="display:flex;flex-direction:column;gap:2px;padding-right:24px;border-right:1px solid var(--border-lit);flex-shrink:0;">
-    <div class="logo" style="border-right:none;padding-right:0;">HF·WATCH<sup>v0.7.3</sup></div>
+    <div class="logo" style="border-right:none;padding-right:0;">HF·WATCH<sup>v0.7.43</sup></div>
     <div class="header-dev-warning" style="font-family:'DM Mono',monospace;font-size:.3rem;color:#cc2222;letter-spacing:.1em;line-height:1;">UNDER DEVELOPMENT · SUBJECT TO CHANGE</div>
   </div>
   <div id="hdr-callsign" class="empty">⚙ SET CALLSIGN</div>
@@ -677,9 +666,6 @@ header {
       <button class="msel-btn active" data-map="grid">Grid Map</button>
       <button class="msel-btn" data-map="aurora">Aurora</button>
       <button class="msel-btn" data-map="weather">Weather</button>
-      <div class="msel-sep"></div>
-      <button class="msel-play" id="map-play-btn">▶ AUTO</button>
-      <span id="auto-countdown"></span>
       <div class="msel-sep"></div>
       <button class="dx-live-btn" id="dx-live-btn">◈ DX</button>
       <div id="dx-band-row"></div>
@@ -714,7 +700,7 @@ header {
             <div id="cs-status" class="cs-status"></div>
           </div>
           <div class="msel-sep" style="height:22px;margin:0 10px;"></div>
-          <label class="ckl"><input type="checkbox" id="chk-fields" checked> Grid</label>
+          <label class="ckl"><input type="checkbox" id="chk-fields"> Grid</label>
           <label class="ckl"><input type="checkbox" id="chk-greyline"> Greyline</label>
           <div id="grid-readout" style="margin-left:auto;font-size:.55rem;color:var(--text-dim);">Click map to identify grid square</div>
         </div>
@@ -751,11 +737,6 @@ header {
           <button class="go-btn wx-mode-btn" data-mode="wind">💨 Wind</button>
           <button class="go-btn wx-mode-btn" data-mode="temp">🌡 Temp</button>
           <button class="go-btn wx-mode-btn" data-mode="precip">🌧 Precip</button>
-          <div class="msel-sep" style="height:18px;margin:0 8px;"></div>
-          <button class="go-btn" id="wx-prev" style="padding:4px 8px;">⏮</button>
-          <button class="go-btn" id="wx-play" style="min-width:78px;padding:4px 10px;">▶ PLAY</button>
-          <button class="go-btn" id="wx-next" style="padding:4px 8px;">⏭</button>
-          <div id="wx-frame-label" class="wx-frame-bar" style="margin-left:8px;"></div>
           <div style="margin-left:auto;font-size:.52rem;color:var(--text-dim);" id="wx-source-label">RainViewer</div>
         </div>
         <div id="wx-wrap"><div id="wx-map"></div></div>
@@ -945,13 +926,6 @@ header {
           <a href="https://openweathermap.org/api" target="_blank" class="sp-unit" style="color:var(--amber-dim);">Get free key ↗</a>
         </div>
       </div>
-      <div class="sp-row">
-        <label class="sp-lbl" for="s-autocycle">Map Auto-Cycle</label>
-        <div class="sp-inline">
-          <input class="sp-input" id="s-autocycle" type="number" min="10" max="300" value="30">
-          <span class="sp-unit">seconds</span>
-        </div>
-      </div>
     </div>
 
     <!-- LOG -->
@@ -1008,6 +982,27 @@ header {
 //   MINOR — new features, backward compatible
 //   PATCH — bug fixes, tweaks, minor adjustments
 //
+// v0.7.43 (2026-04-24)
+//   - Fix: boot goToGrid() was calling map.setView() even with animate=false,
+//     overriding the saved/default map position every reload
+//   - goToGrid() gains moveMap param (default true); boot call passes false —
+//     home grid highlight and label still draw, viewport is never touched
+// v0.7.42 (2026-04-24)
+//   - Default map view changed to world overview: center [20°N, 15°E], zoom 2
+//     (previously defaulted to home grid at zoom 8 — too zoomed for signage use)
+//   - Grid checkbox now unchecked by default
+// v0.7.41 (2026-04-24)
+//   - Removed: weather ⏮/⏭ frame-step buttons and all radar animation code
+//   - Removed: _wxFrames, _wxIdx, setWxFrame(), fetchWeatherData(), _wxData
+//   - Removed: .wx-frame-bar, .wx-now CSS classes
+//   - Radar now shows the most recent snapshot only via loadRadarTile()
+// v0.7.4 (2026-04-24)
+//   - Removed: map auto-cycle feature (▶ AUTO button, countdown, toggleAutoScroll)
+//   - Removed: S.autocycle state, hfw_autocycle localStorage key, settings row
+//   - Removed: MAP_SEQ, _autoTimer, _autoTick
+//   - Removed: weather ▶ PLAY / ⏸ PAUSE button and toggleWxPlay()
+//   - Removed: _wxPlaying, _wxPlayTimer state vars
+//   - Radar prev/next frame stepping retained; only animation loop removed
 // v0.7.3 (2026-04-24)
 //   - Fix: greyline sun icon removed from grid map overlay
 //   - Fix: derived band conditions model completely rewritten
@@ -1057,7 +1052,7 @@ header {
 //   - DX spot count increased to 50 rendered; server requests 100 for filter headroom
 // ══════════════════════════════════════════
 
-const APP_VERSION = '0.7.3';
+const APP_VERSION = '0.7.43';
 // ══════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════
@@ -1065,7 +1060,6 @@ const S = {
   callsign:   localStorage.getItem('hfw_call')           || '',
   grid:       localStorage.getItem('hfw_grid')           || '',
   refresh:    parseInt(localStorage.getItem('hfw_refresh')     || '5'),
-  autocycle:  parseInt(localStorage.getItem('hfw_autocycle')   || '30'),
   dxRefresh:  parseInt(localStorage.getItem('hfw_dxrefresh')   || '60'),
   uiTheme:    localStorage.getItem('hfw_uitheme')        || 'standard',
   accentColor:localStorage.getItem('hfw_accent')         || 'white',
@@ -1089,10 +1083,9 @@ function tickClock() {
 setInterval(tickClock,1000); tickClock();
 
 // ══════════════════════════════════════════
-// MAP SELECTOR + AUTOSCROLL
+// MAP SELECTOR
 // ══════════════════════════════════════════
-const MAP_SEQ = ['grid','aurora','weather'];
-let _activeMap='grid', _autoTimer=null, _autoTick=0;
+let _activeMap='grid';
 
 function switchMap(id) {
   _activeMap = id;
@@ -1107,26 +1100,8 @@ function switchMap(id) {
 }
 
 document.querySelectorAll('.msel-btn').forEach(btn => {
-  btn.addEventListener('click', () => { _autoTick=0; switchMap(btn.dataset.map); });
+  btn.addEventListener('click', () => switchMap(btn.dataset.map));
 });
-
-function toggleAutoScroll() {
-  const btn = document.getElementById('map-play-btn');
-  if (_autoTimer) {
-    clearInterval(_autoTimer); _autoTimer=null; _autoTick=0;
-    btn.textContent='▶ AUTO'; btn.classList.remove('playing');
-    document.getElementById('auto-countdown').textContent='';
-  } else {
-    btn.textContent='⏸ AUTO'; btn.classList.add('playing');
-    _autoTick = S.autocycle;
-    _autoTimer = setInterval(() => {
-      _autoTick--;
-      document.getElementById('auto-countdown').textContent = `${_autoTick}s`;
-      if (_autoTick<=0) { _autoTick=S.autocycle; switchMap(MAP_SEQ[(MAP_SEQ.indexOf(_activeMap)+1)%MAP_SEQ.length]); }
-    }, 1000);
-  }
-}
-document.getElementById('map-play-btn').addEventListener('click', toggleAutoScroll);
 
 // ══════════════════════════════════════════
 // SETTINGS
@@ -1261,7 +1236,6 @@ function saveState() {
   localStorage.setItem('hfw_call',      S.callsign);
   localStorage.setItem('hfw_grid',      S.grid);
   localStorage.setItem('hfw_refresh',   S.refresh);
-  localStorage.setItem('hfw_autocycle', S.autocycle);
   localStorage.setItem('hfw_dxrefresh',  S.dxRefresh);
   localStorage.setItem('hfw_uitheme',   S.uiTheme);
   localStorage.setItem('hfw_accent',    S.accentColor);
@@ -1280,7 +1254,6 @@ function openSettings() {
   document.getElementById('s-grid').value      = S.grid;
   document.getElementById('s-refresh').value   = S.refresh;
   document.getElementById('s-dxrefresh').value  = S.dxRefresh;
-  document.getElementById('s-autocycle').value  = S.autocycle;
   document.getElementById('s-owmkey').value    = S.owmKey;
   document.getElementById('s-qrzkey').value    = S.qrzKey;
   // Reflect current selections
@@ -1298,16 +1271,14 @@ function commitSettings() {
   const newGrid      = document.getElementById('s-grid').value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6).trim();
   const newRef       = Math.max(5,  Math.min(60,  parseInt(document.getElementById('s-refresh').value)    || S.refresh));
   const newDxRef      = Math.max(30,  Math.min(300, parseInt(document.getElementById('s-dxrefresh').value)   || S.dxRefresh));
-  const newCycle      = Math.max(10,  Math.min(300, parseInt(document.getElementById('s-autocycle').value)   || S.autocycle));
 
   const dxRefChanged = newDxRef !== S.dxRefresh;
   S.callsign = newCall; S.grid = newGrid; S.refresh = newRef;
-  S.dxRefresh = newDxRef; S.autocycle = newCycle;
+  S.dxRefresh = newDxRef;
   S.owmKey = document.getElementById('s-owmkey').value.trim();
   S.qrzKey = document.getElementById('s-qrzkey').value.trim();
   saveState();
 
-  if (_autoTimer) { toggleAutoScroll(); toggleAutoScroll(); }
   if (dxRefChanged && _dxActive) { clearInterval(_dxTimer); _dxTick = S.dxRefresh; _dxTimer = setInterval(dxTick, 1000); }
   scheduleRefresh();
 }
@@ -1361,7 +1332,7 @@ document.getElementById('s-grid').addEventListener('input', (e) => {
 });
 
 // Enter/Escape in any settings field
-['s-call','s-grid','s-refresh','s-dxrefresh','s-autocycle'].forEach(id => {
+['s-call','s-grid','s-refresh','s-dxrefresh'].forEach(id => {
   document.getElementById(id).addEventListener('keydown', (e) => {
     if (e.key === 'Enter') closeSettings();
     if (e.key === 'Escape') document.getElementById('settings-overlay').classList.remove('open');
@@ -1750,7 +1721,7 @@ function initMap(){
       zoom   = v.zoom;
     } catch(e) {}
   }
-  if (!center) { center = S.grid ? gridToLatLng(S.grid) : [48.27,-116.55]; zoom = S.grid ? 8 : 5; }
+  if (!center) { center = [20, 15]; zoom = 2; }
 
   const map=L.map('leaflet-map',{center,zoom,minZoom:1,worldCopyJump:true}); window._map=map;
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap contributors © CARTO',subdomains:'abcd',maxZoom:13}).addTo(map);
@@ -1927,10 +1898,10 @@ function drawGrid(map){
     _gridLayers.fields=L.layerGroup(fl).addTo(map);
   }
 }
-function goToGrid(g,animate=true){
+function goToGrid(g,animate=true,moveMap=true){
   const map=window._map; if(!map)return;
   g=g.toUpperCase().trim(); const center=gridToLatLng(g),zoom=g.length>=6?11:8;
-  if(animate)map.flyTo(center,zoom,{duration:.8});else map.setView(center,zoom);
+  if(moveMap){if(animate)map.flyTo(center,zoom,{duration:.8});else map.setView(center,zoom);}
   if(_gridLayers.hl)map.removeLayer(_gridLayers.hl);
   if(_gridLayers.mk)map.removeLayer(_gridLayers.mk);
   const bounds=gridBounds(g);
@@ -2051,9 +2022,7 @@ function updateAuroraInfo(){
 // ══════════════════════════════════════════
 // WEATHER  (RainViewer Radar + OpenWeatherMap Overlays)
 // ══════════════════════════════════════════
-let _wxMap=null, _wxLayer=null, _wxFrames=[], _wxIdx=0,
-    _wxPlaying=false, _wxPlayTimer=null, _wxData=null,
-    _wxInited=false, _wxMode='radar';
+let _wxMap=null, _wxLayer=null, _wxInited=false, _wxMode='radar';
 
 // OpenWeatherMap tiles routed through start.py proxy to avoid CORS
 // start.py /owm/ endpoint forwards to tile.openweathermap.org
@@ -2075,10 +2044,6 @@ async function initWeatherMap(){
     {attribution:'© OpenStreetMap contributors © CARTO', subdomains:'abcd', maxZoom:19}
   ).addTo(_wxMap);
 
-  document.getElementById('wx-prev').addEventListener('click', () => setWxFrame(_wxIdx - 1));
-  document.getElementById('wx-next').addEventListener('click', () => setWxFrame(_wxIdx + 1));
-  document.getElementById('wx-play').addEventListener('click', toggleWxPlay);
-
   document.querySelectorAll('.wx-mode-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.wx-mode-btn').forEach(b => b.classList.remove('active'));
@@ -2087,82 +2052,48 @@ async function initWeatherMap(){
     });
   });
 
-  await fetchWeatherData();
-  if(_wxFrames.length) setWxFrame(_wxFrames.length - 1);
+  loadRadarTile();
 }
 
-async function fetchWeatherData(){
-  _wxData = await safeFetch('https://api.rainviewer.com/public/weather-maps.json');
-  const lbl = document.getElementById('wx-frame-label');
-  if(!_wxData){ if(lbl) lbl.textContent = 'Radar unavailable'; }
-  else { _wxFrames = [...(_wxData.radar?.past || []), ...(_wxData.radar?.nowcast || [])]; }
-}
-
-function setWxMode(mode){
-  if(_wxPlaying) toggleWxPlay();
-  _wxMode = mode;
-  if(_wxLayer){ _wxMap.removeLayer(_wxLayer); _wxLayer = null; }
-
-  const cfg = WX_MODES[mode];
-  const lbl = document.getElementById('wx-frame-label');
-  document.getElementById('wx-source-label').textContent = cfg.label;
-
-  // Show/hide animation controls — only radar supports animation
-  const hasAnim = cfg.type === 'rainviewer';
-  ['wx-prev','wx-play','wx-next'].forEach(id => {
-    document.getElementById(id).style.display = hasAnim ? '' : 'none';
-  });
-
-  if(cfg.type === 'owm'){
-    const key = S.owmKey || '';
-    if(!key){
-      if(lbl) lbl.innerHTML = `<span style="color:var(--red)">OWM API key required — add in ⚙ Settings</span>`;
-      return;
-    }
-    if(lbl) lbl.textContent = 'Updates hourly — openweathermap.org';
-    const url = OWM_URL.replace('{layer}', cfg.layer).replace('{key}', key);
-    _wxLayer = L.tileLayer(url.replace(/{z}/g,'{z}').replace(/{x}/g,'{x}').replace(/{y}/g,'{y}'),
-      {tileSize:256, opacity: cfg.opacity, attribution:'OpenWeatherMap', zIndex:2}
-    ).addTo(_wxMap);
-  } else {
-    // Radar
-    _wxFrames = _wxData ? [...(_wxData.radar?.past || []), ...(_wxData.radar?.nowcast || [])] : [];
-    if(_wxFrames.length){ setWxFrame(_wxFrames.length - 1); }
-    else if(lbl) lbl.textContent = 'Radar unavailable';
-  }
-}
-
-function setWxFrame(idx){
-  if(!_wxMap || !_wxFrames.length || !_wxData) return;
-  _wxIdx = Math.max(0, Math.min(_wxFrames.length - 1, idx));
-  const frame = _wxFrames[_wxIdx];
-  const host  = _wxData.host || 'https://tilecache.rainviewer.com';
-
+// Fetch and display the most recent RainViewer radar snapshot (no animation)
+async function loadRadarTile(){
+  const lbl = document.getElementById('wx-source-label');
+  const data = await safeFetch('https://api.rainviewer.com/public/weather-maps.json');
+  if(!data){ if(lbl) lbl.textContent = 'Radar unavailable'; return; }
+  const past = data.radar?.past || [];
+  if(!past.length){ if(lbl) lbl.textContent = 'Radar unavailable'; return; }
+  const frame = past[past.length - 1];
+  const host  = data.host || 'https://tilecache.rainviewer.com';
+  const t = new Date(frame.time * 1000);
+  const timeStr = `${String(t.getUTCHours()).padStart(2,'0')}:${String(t.getUTCMinutes()).padStart(2,'0')} UTC`;
   if(_wxLayer) _wxMap.removeLayer(_wxLayer);
   _wxLayer = L.tileLayer(
     `${host}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`,
     {tileSize:256, opacity:0.72, attribution:'RainViewer', zIndex:2}
   ).addTo(_wxMap);
-
-  const t = new Date(frame.time * 1000);
-  const timeStr = `${String(t.getUTCHours()).padStart(2,'0')}:${String(t.getUTCMinutes()).padStart(2,'0')} UTC`;
-  const pastLen = _wxData.radar?.past?.length || 0;
-  const isFore  = _wxIdx >= pastLen;
-  const lbl = document.getElementById('wx-frame-label');
-  if(lbl) lbl.innerHTML = isFore
-    ? `<span class="wx-now">▶ FORECAST ${timeStr}</span>`
-    : `Frame ${_wxIdx + 1}/${_wxFrames.length} — ${timeStr}`;
+  if(lbl) lbl.textContent = `RainViewer — ${timeStr}`;
 }
 
-function toggleWxPlay(){
-  _wxPlaying = !_wxPlaying;
-  const btn = document.getElementById('wx-play');
-  if(_wxPlaying){
-    btn.textContent = '⏸ PAUSE';
-    _wxPlayTimer = setInterval(() => setWxFrame((_wxIdx + 1) % _wxFrames.length), 600);
+function setWxMode(mode){
+  _wxMode = mode;
+  if(_wxLayer){ _wxMap.removeLayer(_wxLayer); _wxLayer = null; }
+
+  const cfg = WX_MODES[mode];
+  const lbl = document.getElementById('wx-source-label');
+
+  if(cfg.type === 'owm'){
+    const key = S.owmKey || '';
+    if(!key){
+      if(lbl) lbl.innerHTML = `<span style="color:var(--red)">OWM key required — add in ⚙ Settings</span>`;
+      return;
+    }
+    if(lbl) lbl.textContent = cfg.label;
+    const url = OWM_URL.replace('{layer}', cfg.layer).replace('{key}', key);
+    _wxLayer = L.tileLayer(url.replace(/{z}/g,'{z}').replace(/{x}/g,'{x}').replace(/{y}/g,'{y}'),
+      {tileSize:256, opacity: cfg.opacity, attribution:'OpenWeatherMap', zIndex:2}
+    ).addTo(_wxMap);
   } else {
-    btn.textContent = '▶ PLAY';
-    clearInterval(_wxPlayTimer);
+    loadRadarTile();
   }
 }
 
@@ -3044,8 +2975,8 @@ logLoadStored();
 dxToggle();
 fetchAll();
 
-// Draw QTH home grid highlight at boot without flying the map
-if (S.grid && window._map) goToGrid(S.grid, false);
+// Draw QTH home grid highlight at boot without moving the map
+if (S.grid && window._map) goToGrid(S.grid, false, false);
 
 // Solar position updates every 60s regardless of active view
 // This keeps the greyline current for 24/7 unattended display
