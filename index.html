@@ -5,26 +5,31 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HF·WATCH — Ham Radio Digital Signage</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="leaflet.css" />
-<script src="leaflet.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Orbitron:wght@400;600;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <style>
 :root {
-  --bg-solid: #070705;
-  --bg2:      #0e0e0a;
-  --bg3:      #151510;
-  --amber:         #ffaa00;
-  --amber-dim:     #7a5000;
-  --amber-bright:  #ffcc44;
-  --amber-glow:    rgba(255,170,0,0.16);
+  /* Standard theme defaults — overridden by applyTheme() on load */
+  --bg-solid: #0a0a0a;
+  --bg2:      #111111;
+  --bg3:      #191919;
+  /* Font — overridden per UI theme */
+  --font-ui: 'DM Mono', monospace;
+  --ui-letter-spacing: .06em;
+  /* White accent defaults */
+  --amber:         #d8d8d8;
+  --amber-dim:     #888888;
+  --amber-bright:  #ffffff;
+  --amber-glow:    rgba(220,220,220,0.10);
+  /* System colors — not overridden by theme */
   --green:  #2eff88;
   --red:    #ff3a3a;
   --yellow: #ffd700;
-  --border:     #2a1f00;
-  --border-lit: #5a3a00;
-  --text:     #ffaa00;
-  --text-dim: #c07800;
-  --sidebar-w: 286px;
+  --border:     #2a2a2a;
+  --border-lit: #444444;
+  --text:     #d8d8d8;
+  --text-dim: #999999;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -34,7 +39,7 @@ html, body { height: 100%; overflow: hidden; }
 body {
   background: var(--bg-solid);
   color: var(--text);
-  font-family: 'Share Tech Mono', monospace;
+  font-family: 'DM Mono', monospace;
   display: flex; flex-direction: column; height: 100vh;
 }
 
@@ -53,9 +58,8 @@ header {
 }
 .logo sup { font-size: .4rem; color: var(--text-dim); vertical-align: super; margin-left: 3px; letter-spacing: .1em; }
 #hdr-callsign {
-  font-family: 'Orbitron', sans-serif; font-size: 1.2rem; font-weight: 900;
+  font-family: var(--font-ui); font-size: 1.2rem; font-weight: 600;
   letter-spacing: .28em; color: var(--amber);
-  /* Truly centered in the header — immune to clock width changes */
   position: absolute;
   left: 50%; transform: translateX(-50%);
   white-space: nowrap; pointer-events: none;
@@ -68,7 +72,7 @@ header {
   font-variant-numeric: tabular-nums;
 }
 #clock-time {
-  font-family: 'Share Tech Mono', monospace; font-size: 1.15rem; font-weight: 600;
+  font-family: 'DM Mono', monospace; font-size: 1.15rem; font-weight: 600;
   color: var(--amber-bright); letter-spacing: .06em;
   font-variant-numeric: tabular-nums;
 }
@@ -94,8 +98,8 @@ header {
   background: var(--bg2); border-bottom: 1px solid var(--border-lit);
 }
 .msel-btn {
-  font-family: 'Orbitron', sans-serif; font-size: .54rem; font-weight: 600;
-  letter-spacing: .16em; padding: 7px 14px; background: transparent;
+  font-family: var(--font-ui); font-size: .54rem; font-weight: 600;
+  letter-spacing: var(--ui-letter-spacing); /* placeholder */ letter-spacing-REMOVE: .16em; padding: 7px 14px; background: transparent;
   border: 1px solid var(--border); color: var(--text-dim); cursor: pointer;
   transition: all .15s; text-transform: uppercase; white-space: nowrap;
 }
@@ -103,7 +107,7 @@ header {
 .msel-btn.active { background: var(--amber-glow); border-color: var(--amber); color: var(--amber-bright); }
 .msel-sep { width: 1px; height: 24px; background: var(--border-lit); margin: 0 6px; }
 .msel-play {
-  font-family: 'Orbitron', sans-serif; font-size: .54rem; letter-spacing: .12em;
+  font-family: var(--font-ui); font-size: .54rem; letter-spacing: var(--ui-letter-spacing);
   padding: 7px 14px; background: var(--amber-glow); border: 1px solid var(--amber-dim);
   color: var(--amber); cursor: pointer; transition: all .15s; white-space: nowrap;
 }
@@ -129,7 +133,7 @@ header {
 /* Aurora */
 #mv-aurora .aurora-dual { flex: 1; display: flex; gap: 10px; padding: 10px; background: #020208; min-height: 0; }
 .aurora-hem { flex: 1; display: flex; flex-direction: column; border: 1px solid var(--border-lit); overflow: hidden; background: #020208; }
-.aurora-hem-title { font-family: 'Orbitron', sans-serif; font-size: .52rem; letter-spacing: .2em; color: var(--text-dim); text-align: center; padding: 5px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.aurora-hem-title { font-family: var(--font-ui); font-size: .52rem; letter-spacing: .2em; color: var(--text-dim); text-align: center; padding: 5px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .aurora-img { flex: 1; width: 100%; height: 100%; object-fit: contain; display: block; }
 
 /* ── SOLAR SIDEBAR ── */
@@ -141,12 +145,12 @@ header {
 .sb-inner { padding: 14px 14px 52px; }
 .sb-section { margin-bottom: 16px; }
 .sb-title {
-  font-family: 'Orbitron', sans-serif; font-size: .49rem; letter-spacing: .22em;
+  font-family: var(--font-ui); font-size: .49rem; letter-spacing: var(--ui-letter-spacing);
   color: var(--text-dim); text-transform: uppercase; margin-bottom: 10px;
   padding-bottom: 6px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px;
 }
 .sb-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; margin-bottom: 10px; }
-.sb-val { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 2rem; line-height: 1; transition: color .4s; }
+.sb-val { font-family: var(--font-ui); font-weight: 900; font-size: 2rem; line-height: 1; transition: color .4s; }
 .sb-lbl { font-size: .54rem; color: var(--text-dim); letter-spacing: .06em; margin-top: 3px; }
 .sb-note { font-size: .57rem; color: var(--text-dim); margin-top: 4px; line-height: 1.4; }
 
@@ -156,17 +160,17 @@ header {
 .kp-nums { display: flex; gap: 4px; margin-top: 17px; }
 .kp-nums span { flex: 1; font-size: .44rem; text-align: center; color: var(--text-dim); }
 
-.xray-class { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 2.1rem; line-height: 1; transition: color .4s; }
+.xray-class { font-family: var(--font-ui); font-weight: 900; font-size: 2.1rem; line-height: 1; transition: color .4s; }
 .stat-lbl { font-size: .56rem; color: var(--text-dim); letter-spacing: .06em; }
 .stat-sub { font-size: .6rem; color: var(--text-dim); margin-top: 4px; line-height: 1.5; }
 
 .band-table { width: 100%; border-collapse: collapse; }
-.band-table th { font-family: 'Orbitron', sans-serif; font-size: .45rem; letter-spacing: .1em; color: var(--text-dim); padding: 6px 6px; text-align: left; border-bottom: 1px solid var(--border); font-weight: 400; }
+.band-table th { font-family: var(--font-ui); font-size: .45rem; letter-spacing: .1em; color: var(--text-dim); padding: 6px 6px; text-align: left; border-bottom: 1px solid var(--border); font-weight: 400; }
 .band-table td { padding: 8px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; }
 .band-table tr:last-child td { border-bottom: none; }
 .band-table tr:hover td { background: rgba(255,170,0,.03); }
-.band-name { font-family: 'Orbitron', sans-serif; font-size: .58rem; color: var(--amber-bright); }
-.cond { font-family: 'Orbitron', sans-serif; font-size: .48rem; letter-spacing: .08em; padding: 3px 8px; border: 1px solid currentColor; display: inline-block; }
+.band-name { font-family: var(--font-ui); font-size: .58rem; color: var(--amber-bright); }
+.cond { font-family: var(--font-ui); font-size: .48rem; letter-spacing: .08em; padding: 3px 8px; border: 1px solid currentColor; display: inline-block; }
 .cond-G { color: var(--green);  border-color: rgba(46,255,136,.4); }
 .cond-F { color: var(--yellow); border-color: rgba(255,215,0,.4); }
 .cond-P { color: var(--red);    border-color: rgba(255,58,58,.4); }
@@ -189,12 +193,12 @@ header {
   display: none;
   position: fixed;
   z-index: 9000;
-  max-width: 420px;
+  max-width: min(420px, calc(100vw - 28px));
   background: var(--bg2);
   border: 1px solid var(--border-lit);
   box-shadow: 0 8px 32px rgba(0,0,0,.8), 0 0 20px var(--amber-glow);
   padding: 12px 14px;
-  font-family: 'Share Tech Mono', monospace;
+  font-family: 'DM Mono', monospace;
   font-size: .58rem;
   line-height: 1.65;
   color: var(--text-dim);
@@ -224,7 +228,7 @@ header {
 .dot.err   { background: var(--red);    box-shadow: 0 0 7px var(--red);    animation: none; }
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
 #status-right { margin-left: auto; display: flex; gap: 16px; }
-#qth-badge { font-family: 'Orbitron', sans-serif; font-size: .5rem; color: var(--amber-dim); letter-spacing: .1em; }
+#qth-badge { font-family: var(--font-ui); font-size: .5rem; color: var(--amber-dim); letter-spacing: .1em; }
 
 /* ── SETTINGS PANEL ── */
 .overlay {
@@ -264,7 +268,7 @@ header {
   background: var(--bg3);
 }
 .sp-title {
-  font-family: 'Orbitron', sans-serif; font-size: .62rem;
+  font-family: var(--font-ui); font-size: .62rem;
   letter-spacing: .24em; color: var(--amber-bright);
 }
 .sp-hint { font-size: .5rem; color: var(--text-dim); letter-spacing: .04em; }
@@ -276,8 +280,8 @@ header {
 }
 .sp-section:last-child { border-bottom: none; }
 .sp-section-title {
-  font-family: 'Orbitron', sans-serif; font-size: .48rem;
-  letter-spacing: .2em; color: var(--text-dim); text-transform: uppercase;
+  font-family: var(--font-ui); font-size: .48rem;
+  letter-spacing: var(--ui-letter-spacing); color: var(--text-dim); text-transform: uppercase;
   margin-bottom: 10px; display: flex; align-items: center; gap: 7px;
 }
 .sp-section-title::after {
@@ -290,7 +294,7 @@ header {
 .sp-lbl { font-size: .52rem; color: var(--text-dim); letter-spacing: .09em; text-transform: uppercase; }
 .sp-input {
   background: var(--bg-solid); border: 1px solid var(--border-lit);
-  color: var(--amber); font-family: 'Share Tech Mono', monospace;
+  color: var(--amber); font-family: 'DM Mono', monospace;
   font-size: .82rem; padding: 6px 10px; outline: none; width: 100%;
   letter-spacing: .06em; transition: border-color .15s, box-shadow .15s;
 }
@@ -304,22 +308,23 @@ header {
 .sp-inline .sp-input { width: 72px; text-align: center; }
 .sp-unit { font-size: .54rem; color: var(--text-dim); letter-spacing: .06em; }
 
-/* Theme swatches — placeholder for future use */
+/* Theme swatches */
 .sp-themes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
-.sp-theme-swatch {
+.sp-accent-swatch {
   width: 36px; height: 24px; border: 2px solid var(--border-lit);
   cursor: pointer; transition: border-color .15s; position: relative;
 }
-.sp-theme-swatch.active { border-color: var(--amber); }
-.sp-theme-swatch:hover { border-color: var(--amber-dim); }
-.sp-theme-swatch .sw-lbl { font-family: 'Orbitron',sans-serif; font-size: .36rem; color: var(--text-dim); text-align: center; position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
+.sp-accent-swatch.active { border-color: var(--amber-bright); box-shadow: 0 0 0 1px var(--amber); }
+.sp-accent-swatch:hover { border-color: var(--amber-dim); }
+.sp-accent-swatch .sw-lbl { font-family: 'DM Mono',monospace; font-size: .36rem; color: var(--text-dim); text-align: center; position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
+.sp-uitheme-btn.active { border-color: var(--amber-bright); color: var(--amber-bright); background: var(--amber-glow); }
 
 /* Save feedback */
 /* ── INPUTS ── */
-.tf { background: var(--bg2); border: 1px solid var(--border-lit); color: var(--amber); font-family: 'Share Tech Mono', monospace; font-size: .78rem; padding: 5px 10px; text-transform: uppercase; letter-spacing: .06em; outline: none; width: 100px; }
+.tf { background: var(--bg2); border: 1px solid var(--border-lit); color: var(--amber); font-family: 'DM Mono', monospace; font-size: .78rem; padding: 5px 10px; text-transform: uppercase; letter-spacing: .06em; outline: none; width: 100px; }
 .tf:focus { border-color: var(--amber); box-shadow: 0 0 7px rgba(255,170,0,.15); }
 .tf::placeholder { color: var(--text-dim); }
-.go-btn { background: var(--amber-glow); border: 1px solid var(--amber-dim); color: var(--amber); font-family: 'Orbitron', sans-serif; font-size: .52rem; letter-spacing: .14em; padding: 6px 13px; cursor: pointer; transition: all .15s; white-space: nowrap; }
+.go-btn { background: var(--amber-glow); border: 1px solid var(--amber-dim); color: var(--amber); font-family: var(--font-ui); font-size: .52rem; letter-spacing: var(--ui-letter-spacing); padding: 6px 13px; cursor: pointer; transition: all .15s; white-space: nowrap; }
 .go-btn:hover { background: rgba(255,170,0,.22); border-color: var(--amber); }
 .ckl { font-size: .6rem; color: var(--text-dim); display: flex; align-items: center; gap: 5px; cursor: pointer; white-space: nowrap; }
 .ckl input[type=checkbox] {
@@ -359,7 +364,7 @@ header {
 
 /* ── DX CLUSTER TOOLBAR ── */
 .dx-live-btn {
-  font-family:'Orbitron',sans-serif; font-size:.5rem; letter-spacing:.14em;
+  font-family:var(--font-ui); font-size:.5rem; letter-spacing:var(--ui-letter-spacing);
   padding:5px 12px; border:1px solid var(--border-lit); background:transparent;
   color:var(--text-dim); cursor:pointer; transition:all .15s; white-space:nowrap;
 }
@@ -367,39 +372,47 @@ header {
 .dx-live-btn.active { border-color:var(--green); color:var(--green); background:rgba(46,255,136,.08); }
 #dx-band-row { display:none; align-items:center; gap:4px; }
 .dx-band-btn {
-  font-family:'Orbitron',sans-serif; font-size:.44rem; letter-spacing:.1em;
+  font-family:var(--font-ui); font-size:.44rem; letter-spacing:.1em;
   padding:4px 9px; border:1px solid; background:transparent; cursor:pointer;
   transition:all .15s; opacity:.28; white-space:nowrap;
 }
 .dx-band-btn.on { opacity:1; }
-#dx-spot-count { display:none; font-family:'Orbitron',sans-serif; font-size:.46rem; color:var(--amber-dim); letter-spacing:.08em; white-space:nowrap; }
-#dx-refresh-cd { display:none; font-size:.44rem; color:var(--text-dim); white-space:nowrap; }
+/* DX mode filter dropdown */
+#dx-mode-filter {
+  font-family: var(--font-ui); font-size: .48rem; letter-spacing: .08em;
+  background: var(--bg2); border: 1px solid var(--border-lit);
+  color: var(--text-dim); padding: 4px 8px; cursor: pointer;
+  outline: none; appearance: none; -webkit-appearance: none;
+  white-space: nowrap; flex-shrink: 0;
+}
+#dx-mode-filter:hover { border-color: var(--amber-dim); color: var(--amber); }
+#dx-mode-filter option { background: var(--bg2); color: var(--text); }
 
 /* LOG layer */
 .log-live-btn {
-  font-family:'Orbitron',sans-serif; font-size:.5rem; letter-spacing:.14em;
+  font-family:var(--font-ui); font-size:.5rem; letter-spacing:var(--ui-letter-spacing);
   padding:5px 12px; border:1px solid var(--border-lit); background:transparent;
   color:var(--text-dim); cursor:pointer; transition:all .15s; white-space:nowrap;
 }
 .log-live-btn:hover { border-color:var(--amber-dim); color:var(--amber); }
 .log-live-btn.active { border-color:#44aaff; color:#44aaff; background:rgba(68,170,255,.08); }
 #log-controls { display:none; align-items:center; gap:6px; }
-#log-count { font-family:'Orbitron',sans-serif; font-size:.46rem; color:var(--amber-dim); letter-spacing:.08em; white-space:nowrap; }
+#log-count { font-family:var(--font-ui); font-size:.46rem; color:var(--amber-dim); letter-spacing:.08em; white-space:nowrap; }
 .log-spot-label {
-  position:absolute; font-family:'Share Tech Mono',monospace;
+  position:absolute; font-family:'DM Mono',monospace;
   background:var(--bg2); border:1px solid; border-radius:2px;
   padding:5px 9px; pointer-events:none; white-space:nowrap; z-index:700;
 }
-.log-label-call { font-family:'Orbitron',sans-serif; font-size:.68rem; font-weight:700; letter-spacing:.1em; }
+.log-label-call { font-family:var(--font-ui); font-size:.68rem; font-weight:700; letter-spacing:.1em; }
 .log-label-info { font-size:.55rem; opacity:.75; margin-top:2px; }
 
 /* DX Spot popup label */
 .dx-spot-label {
-  font-family:'Share Tech Mono',monospace; background:var(--bg2);
+  font-family:'DM Mono',monospace; background:var(--bg2);
   border:1.5px solid currentColor; padding:6px 10px; white-space:nowrap;
   box-shadow:0 0 14px rgba(0,0,0,.9); pointer-events:none;
 }
-.dx-label-call { font-family:'Orbitron',sans-serif; font-size:13px; font-weight:900; letter-spacing:.14em; }
+.dx-label-call { font-family:var(--font-ui); font-size:13px; font-weight:900; letter-spacing:.14em; }
 .dx-label-info { font-size:11px; margin-top:3px; opacity:.8; }
 
 /* ── LEAFLET ── */
@@ -414,7 +427,7 @@ header {
 ::-webkit-scrollbar-thumb { background: var(--border-lit); }
 ::-webkit-scrollbar-thumb:hover { background: var(--amber-dim); }
 .wx-frame-bar { font-size: .6rem; color: var(--text-dim); }
-.wx-now { color: var(--yellow); font-family: 'Orbitron', sans-serif; font-size: .54rem; letter-spacing: .08em; }
+.wx-now { color: var(--yellow); font-family: var(--font-ui); font-size: .54rem; letter-spacing: .08em; }
 .wx-mode-btn.active { border-color: var(--amber); color: var(--amber); background: var(--amber-glow); }
 
 /* ── Toast notification ── */
@@ -425,7 +438,7 @@ header {
   background: var(--bg3);
   border: 1px solid var(--amber-dim);
   color: var(--text);
-  font-family: 'Share Tech Mono', monospace;
+  font-family: 'DM Mono', monospace;
   font-size: .58rem;
   letter-spacing: .05em;
   padding: 10px 18px;
@@ -453,7 +466,7 @@ header {
   position: fixed;
   bottom: 32px; right: 14px;
   z-index: 480;
-  font-family: 'Orbitron', sans-serif; font-size: .52rem; letter-spacing: .14em;
+  font-family: var(--font-ui); font-size: .52rem; letter-spacing: var(--ui-letter-spacing);
   padding: 9px 16px;
   background: var(--bg2);
   border: 1px solid var(--amber-dim);
@@ -488,7 +501,7 @@ header {
   #sidebar-close {
     display: block;
     position: absolute; top: 10px; right: 12px;
-    font-family: 'Orbitron', sans-serif; font-size: .44rem; letter-spacing: .1em;
+    font-family: var(--font-ui); font-size: .44rem; letter-spacing: .1em;
     background: transparent; border: 1px solid var(--border-lit);
     color: var(--text-dim); cursor: pointer; padding: 4px 10px;
     touch-action: manipulation; z-index: 1;
@@ -546,9 +559,8 @@ header {
 
   #refresh-btn { width: 32px !important; height: 32px !important; font-size: .9rem !important; }
 
-  #dx-spot-count { font-size: .42rem; }
-  #dx-refresh-cd { display: none !important; }
-  #dx-spot-count { display: none !important; }
+  /* DX mode filter — smaller on mobile */
+  #dx-mode-filter { font-size: .42rem; padding: 3px 6px; }
 
   #log-clear-btn  { font-size: .40rem; padding: 4px 7px; }
   #log-count { display: none; }
@@ -636,8 +648,8 @@ header {
 <!-- HEADER -->
 <header>
   <div style="display:flex;flex-direction:column;gap:2px;padding-right:24px;border-right:1px solid var(--border-lit);flex-shrink:0;">
-    <div class="logo" style="border-right:none;padding-right:0;">HF·WATCH<sup>v0.6.2</sup></div>
-    <div class="header-dev-warning" style="font-family:'Share Tech Mono',monospace;font-size:.3rem;color:#cc2222;letter-spacing:.1em;line-height:1;">UNDER DEVELOPMENT · SUBJECT TO CHANGE</div>
+    <div class="logo" style="border-right:none;padding-right:0;">HF·WATCH<sup>v0.7.1</sup></div>
+    <div class="header-dev-warning" style="font-family:'DM Mono',monospace;font-size:.3rem;color:#cc2222;letter-spacing:.1em;line-height:1;">UNDER DEVELOPMENT · SUBJECT TO CHANGE</div>
   </div>
   <div id="hdr-callsign" class="empty">⚙ SET CALLSIGN</div>
   <div class="hdr-sep"></div>
@@ -671,8 +683,12 @@ header {
       <div class="msel-sep"></div>
       <button class="dx-live-btn" id="dx-live-btn">◈ DX</button>
       <div id="dx-band-row"></div>
-      <span id="dx-spot-count"></span>
-      <span id="dx-refresh-cd"></span>
+      <select id="dx-mode-filter" title="Filter by mode" style="display:none;">
+        <option value="all">FILTER</option>
+        <option value="ssb">SSB</option>
+        <option value="cw">CW</option>
+        <option value="digi">DIGI</option>
+      </select>
       <button class="log-live-btn" id="log-live-btn">◉ LOG</button>
       <span id="log-count"></span>
       <div id="log-controls">
@@ -709,7 +725,7 @@ header {
       <!-- AURORA -->
       <div class="map-view" id="mv-aurora">
         <div class="map-sub-bar">
-          <div id="aurora-kp-display" style="font-family:'Orbitron',sans-serif;font-size:.72rem;">Kp: –</div>
+          <div id="aurora-kp-display" style="font-family:var(--font-ui);font-size:.72rem;">Kp: –</div>
           <div id="aurora-storm" style="font-size:.64rem;color:var(--text-dim);margin-left:6px;"></div>
           <div id="aurora-vis" style="margin-left:auto;font-size:.59rem;color:var(--text-dim);"></div>
           <div id="aurora-ts" style="font-size:.55rem;color:var(--text-dim);margin-left:12px;"></div>
@@ -826,7 +842,7 @@ header {
   </div><!-- /solar-sidebar -->
 
   <div id="dev-credit" style="position:fixed;bottom:24px;right:0;width:22%;min-width:240px;max-width:380px;text-align:right;padding:3px 14px;border-top:1px solid var(--border);background:var(--bg2);z-index:49;">
-    <span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:var(--text-dim);letter-spacing:.14em;">Developed by WNAMT utilizing Claude</span>
+    <span style="font-family:'DM Mono',monospace;font-size:.52rem;color:var(--text-dim);letter-spacing:.14em;">Developed by WNAMT utilizing Claude</span>
   </div>
 
 </div><!-- /main-layout -->
@@ -850,7 +866,7 @@ header {
       <div class="sp-title">⚙ STATION SETTINGS</div>
       <div style="display:flex;align-items:center;gap:12px;">
         <div class="sp-hint">Click outside to save &amp; close</div>
-        <button id="sp-close-btn" onclick="closeSettings()" style="font-family:'Orbitron',sans-serif;font-size:.52rem;letter-spacing:.1em;background:transparent;border:1px solid var(--border-lit);color:var(--text-dim);cursor:pointer;padding:4px 10px;touch-action:manipulation;flex-shrink:0;" title="Save and close">✕</button>
+        <button id="sp-close-btn" onclick="closeSettings()" style="font-family:var(--font-ui);font-size:.52rem;letter-spacing:var(--ui-letter-spacing);background:transparent;border:1px solid var(--border-lit);color:var(--text-dim);cursor:pointer;padding:4px 10px;touch-action:manipulation;flex-shrink:0;" title="Save and close">✕</button>
       </div>
     </div>
 
@@ -867,29 +883,38 @@ header {
       </div>
     </div>
 
-    <!-- DISPLAY / THEME -->
+    <!-- DISPLAY -->
     <div class="sp-section">
       <div class="sp-section-title">Display</div>
+
       <div class="sp-row">
-        <div class="sp-lbl">Theme</div>
+        <div class="sp-lbl">UI Style</div>
+        <div class="sp-inline" style="gap:8px;">
+          <button class="go-btn sp-uitheme-btn" data-uitheme="standard" style="min-width:90px;">Standard</button>
+          <button class="go-btn sp-uitheme-btn" data-uitheme="digital" style="min-width:90px;">Digital</button>
+        </div>
+      </div>
+
+      <div class="sp-row" style="margin-top:10px;">
+        <div class="sp-lbl">Accent Color</div>
         <div class="sp-themes">
-          <div class="sp-theme-swatch" data-theme="amber" style="background:linear-gradient(135deg,#070705 50%,#3a1f00 100%);border-color:#7a5000;">
+          <div class="sp-accent-swatch" data-accent="white" style="background:#111;border-color:#555;" title="White">
+            <span class="sw-lbl" style="color:#ffffff;">White</span>
+          </div>
+          <div class="sp-accent-swatch" data-accent="amber" style="background:linear-gradient(135deg,#0a0a0a 50%,#2a1500 100%);border-color:#7a5000;" title="Amber">
             <span class="sw-lbl" style="color:#ffaa00;">Amber</span>
           </div>
-          <div class="sp-theme-swatch" data-theme="green" style="background:linear-gradient(135deg,#050a05 50%,#003a10 100%);border-color:#006633;">
-            <span class="sw-lbl" style="color:#00dd77;">Green</span>
+          <div class="sp-accent-swatch" data-accent="green" style="background:linear-gradient(135deg,#0a0a0a 50%,#002210 100%);border-color:#006633;" title="Green">
+            <span class="sw-lbl" style="color:#00cc66;">Green</span>
           </div>
-          <div class="sp-theme-swatch" data-theme="blue" style="background:linear-gradient(135deg,#050508 50%,#001a3a 100%);border-color:#0055aa;">
+          <div class="sp-accent-swatch" data-accent="blue" style="background:linear-gradient(135deg,#0a0a0a 50%,#001525 100%);border-color:#0055aa;" title="Blue">
             <span class="sw-lbl" style="color:#44aaff;">Blue</span>
           </div>
-          <div class="sp-theme-swatch" data-theme="purple" style="background:linear-gradient(135deg,#080508 50%,#1a003a 100%);border-color:#660099;">
+          <div class="sp-accent-swatch" data-accent="purple" style="background:linear-gradient(135deg,#0a0a0a 50%,#150028 100%);border-color:#660099;" title="Purple">
             <span class="sw-lbl" style="color:#bb77ff;">Purple</span>
           </div>
-          <div class="sp-theme-swatch" data-theme="pink" style="background:linear-gradient(135deg,#080508 50%,#3a0022 100%);border-color:#aa0066;">
+          <div class="sp-accent-swatch" data-accent="pink" style="background:linear-gradient(135deg,#0a0a0a 50%,#28001a 100%);border-color:#aa0066;" title="Pink">
             <span class="sw-lbl" style="color:#ff55bb;">Pink</span>
-          </div>
-          <div class="sp-theme-swatch" data-theme="light" style="background:linear-gradient(135deg,#070705 50%,#333333 100%);border-color:#555555;">
-            <span class="sw-lbl" style="color:#e8e8e8;">White</span>
           </div>
         </div>
       </div>
@@ -983,7 +1008,7 @@ header {
 //   MINOR — new features, backward compatible
 //   PATCH — bug fixes, tweaks, minor adjustments
 //
-// v0.6.2 (2026-04-23)
+// v0.7.1 (2026-04-23)
 //   - Developer credit updated: "Developed by WNAMT utilizing Claude"
 //   - CRT scanline overlay removed for improved readability
 //   - All text-glow (text-shadow) removed site-wide
@@ -1015,19 +1040,20 @@ header {
 //   - DX spot count increased to 50 rendered; server requests 100 for filter headroom
 // ══════════════════════════════════════════
 
-const APP_VERSION = '0.6.2';
+const APP_VERSION = '0.7.1';
 // ══════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════
 const S = {
-  callsign:  localStorage.getItem('hfw_call')       || '',
-  grid:      localStorage.getItem('hfw_grid')       || '',
-  refresh:   parseInt(localStorage.getItem('hfw_refresh')    || '5'),
-  autocycle: parseInt(localStorage.getItem('hfw_autocycle')  || '30'),
-  dxRefresh: parseInt(localStorage.getItem('hfw_dxrefresh')  || '60'),
-  theme:     localStorage.getItem('hfw_theme')      || 'amber',
-  owmKey:    localStorage.getItem('hfw_owmkey')     || '',
-  qrzKey:    localStorage.getItem('hfw_qrzkey')     || '',
+  callsign:   localStorage.getItem('hfw_call')           || '',
+  grid:       localStorage.getItem('hfw_grid')           || '',
+  refresh:    parseInt(localStorage.getItem('hfw_refresh')     || '5'),
+  autocycle:  parseInt(localStorage.getItem('hfw_autocycle')   || '30'),
+  dxRefresh:  parseInt(localStorage.getItem('hfw_dxrefresh')   || '60'),
+  uiTheme:    localStorage.getItem('hfw_uitheme')        || 'standard',
+  accentColor:localStorage.getItem('hfw_accent')         || 'white',
+  owmKey:     localStorage.getItem('hfw_owmkey')         || '',
+  qrzKey:     localStorage.getItem('hfw_qrzkey')         || '',
 };
 
 // ══════════════════════════════════════════
@@ -1091,49 +1117,92 @@ document.getElementById('map-play-btn').addEventListener('click', toggleAutoScro
 // ══════════════════════════════════════════
 // THEMES
 // ══════════════════════════════════════════
-const THEMES = {
+// ══════════════════════════════════════════
+// UI THEMES — visual style (structure, fonts, backgrounds)
+// ══════════════════════════════════════════
+const UI_THEMES = {
+  standard: {
+    // Clean professional instrument panel — default
+    // Uses Share Tech Mono throughout, compact letter-spacing
+    '--bg-solid':         '#0a0a0a',
+    '--bg2':              '#111111',
+    '--bg3':              '#191919',
+    '--font-ui':          "'DM Mono', monospace",
+    '--ui-letter-spacing':'.02em',
+  },
+  digital: {
+    // Original terminal/HUD aesthetic with Orbitron display font
+    '--bg-solid':         '#070705',
+    '--bg2':              '#0e0e0a',
+    '--bg3':              '#151510',
+    '--font-ui':          "'Orbitron', sans-serif",
+    '--ui-letter-spacing':'.16em',
+  },
+};
+
+// ══════════════════════════════════════════
+// ACCENT COLORS — applied on top of any UI theme
+// ══════════════════════════════════════════
+const ACCENT_COLORS = {
+  white: {
+    '--amber':       '#d8d8d8',
+    '--amber-dim':   '#888888',
+    '--amber-bright':'#ffffff',
+    '--amber-glow':  'rgba(220,220,220,0.10)',
+    '--text':        '#d8d8d8',
+    '--text-dim':    '#999999',
+    '--border':      '#2a2a2a',
+    '--border-lit':  '#444444',
+  },
   amber: {
-    '--amber':'#ffaa00','--amber-dim':'#7a5000','--amber-bright':'#ffcc44',
-    '--amber-glow':'rgba(255,170,0,0.16)','--text':'#ffaa00','--text-dim':'#c07800',
-    '--border':'#2a1f00','--border-lit':'#5a3a00',
-    '--bg-solid':'#070705','--bg2':'#0e0e0a','--bg3':'#151510',
-    '--scan-opacity':'0.045',
+    '--amber':       '#ffaa00',
+    '--amber-dim':   '#7a5000',
+    '--amber-bright':'#ffcc44',
+    '--amber-glow':  'rgba(255,170,0,0.14)',
+    '--text':        '#ffaa00',
+    '--text-dim':    '#c07800',
+    '--border':      '#2a1f00',
+    '--border-lit':  '#5a3a00',
   },
   green: {
-    '--amber':'#00dd77','--amber-dim':'#006633','--amber-bright':'#44ffaa',
-    '--amber-glow':'rgba(0,221,119,0.16)','--text':'#00dd77','--text-dim':'#00aa55',
-    '--border':'#002a15','--border-lit':'#005a30',
-    '--bg-solid':'#050a07','--bg2':'#09130d','--bg3':'#0e1a12',
-    '--scan-opacity':'0.045',
+    '--amber':       '#00cc66',
+    '--amber-dim':   '#006633',
+    '--amber-bright':'#33ff88',
+    '--amber-glow':  'rgba(0,204,102,0.14)',
+    '--text':        '#00cc66',
+    '--text-dim':    '#009944',
+    '--border':      '#002a15',
+    '--border-lit':  '#005530',
   },
   blue: {
-    '--amber':'#44aaff','--amber-dim':'#0055aa','--amber-bright':'#88ccff',
-    '--amber-glow':'rgba(68,170,255,0.16)','--text':'#44aaff','--text-dim':'#2288cc',
-    '--border':'#001a3a','--border-lit':'#003a7a',
-    '--bg-solid':'#050508','--bg2':'#090912','--bg3':'#0e0e1a',
-    '--scan-opacity':'0.045',
+    '--amber':       '#44aaff',
+    '--amber-dim':   '#0055aa',
+    '--amber-bright':'#88ccff',
+    '--amber-glow':  'rgba(68,170,255,0.14)',
+    '--text':        '#44aaff',
+    '--text-dim':    '#2288cc',
+    '--border':      '#001a3a',
+    '--border-lit':  '#003a7a',
   },
   purple: {
-    '--amber':'#bb77ff','--amber-dim':'#660099','--amber-bright':'#dd99ff',
-    '--amber-glow':'rgba(187,119,255,0.16)','--text':'#bb77ff','--text-dim':'#8844cc',
-    '--border':'#1a003a','--border-lit':'#440077',
-    '--bg-solid':'#070508','--bg2':'#100a12','--bg3':'#160e1a',
-    '--scan-opacity':'0.045',
+    '--amber':       '#bb77ff',
+    '--amber-dim':   '#660099',
+    '--amber-bright':'#dd99ff',
+    '--amber-glow':  'rgba(187,119,255,0.14)',
+    '--text':        '#bb77ff',
+    '--text-dim':    '#8844cc',
+    '--border':      '#1a003a',
+    '--border-lit':  '#440077',
   },
   pink: {
-    '--amber':'#ff55bb','--amber-dim':'#aa0066','--amber-bright':'#ff88cc',
-    '--amber-glow':'rgba(255,85,187,0.16)','--text':'#ff55bb','--text-dim':'#cc2288',
-    '--border':'#3a0022','--border-lit':'#7a0044',
-    '--bg-solid':'#080507','--bg2':'#120a0f','--bg3':'#1a0e15',
-    '--scan-opacity':'0.045',
-  },
-  light: {
-    '--amber':'#e8e8e8','--amber-dim':'#888888','--amber-bright':'#ffffff',
-    '--amber-glow':'rgba(255,255,255,0.10)','--text':'#e8e8e8','--text-dim':'#aaaaaa',
-    '--border':'#2a2a2a','--border-lit':'#555555',
-    '--bg-solid':'#070705','--bg2':'#0e0e0a','--bg3':'#151510',
-    '--green':'#2eff88','--red':'#ff3a3a','--yellow':'#ffd700','--blue':'#44aaff',
-    '--scan-opacity':'0.045',
+    '--amber':       '#ff55bb',
+    '--amber-dim':   '#aa0066',
+    '--amber-bright':'#ff88cc',
+    '--amber-glow':  'rgba(255,85,187,0.14)',
+    '--text':        '#ff55bb',
+    '--text-dim':    '#cc2288',
+    '--border':      '#3a0022',
+    '--border-lit':  '#7a0044',
   },
 };
 
@@ -1142,15 +1211,27 @@ function themeColor(varName) {
   return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
 }
 
-function applyTheme(name) {
-  S.theme = name;
-  const t = THEMES[name] || THEMES.amber;
+// Apply UI theme (structure) + accent color
+function applyTheme(uiTheme, accentColor) {
+  S.uiTheme     = uiTheme     || S.uiTheme     || 'standard';
+  S.accentColor = accentColor || S.accentColor || 'white';
+
+  const ut  = UI_THEMES[S.uiTheme]     || UI_THEMES.standard;
+  const ac  = ACCENT_COLORS[S.accentColor] || ACCENT_COLORS.white;
   const root = document.documentElement;
-  Object.entries(t).forEach(([k,v]) => root.style.setProperty(k, v));
-  Object.keys(THEMES.amber).forEach(k => { if(!(k in t)) root.style.setProperty(k, THEMES.amber[k]); });
-  document.querySelectorAll('.sp-theme-swatch').forEach(sw =>
-    sw.classList.toggle('active', sw.dataset.theme === name));
-  // Redraw greyline canvas if it's already active — deferred so all let vars are initialised
+
+  // Apply structural theme vars
+  Object.entries(ut).forEach(([k,v]) => root.style.setProperty(k, v));
+  // Apply accent color vars on top
+  Object.entries(ac).forEach(([k,v]) => root.style.setProperty(k, v));
+
+  // Update swatch active states
+  document.querySelectorAll('.sp-uitheme-btn').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.uitheme === S.uiTheme));
+  document.querySelectorAll('.sp-accent-swatch').forEach(sw =>
+    sw.classList.toggle('active', sw.dataset.accent === S.accentColor));
+
+  // Redraw grid/greyline with new theme colors
   setTimeout(() => {
     try {
       if (window._map) drawGrid(window._map);
@@ -1160,14 +1241,15 @@ function applyTheme(name) {
 }
 
 function saveState() {
-  localStorage.setItem('hfw_call',       S.callsign);
-  localStorage.setItem('hfw_grid',       S.grid);
-  localStorage.setItem('hfw_refresh',    S.refresh);
-  localStorage.setItem('hfw_autocycle',  S.autocycle);
+  localStorage.setItem('hfw_call',      S.callsign);
+  localStorage.setItem('hfw_grid',      S.grid);
+  localStorage.setItem('hfw_refresh',   S.refresh);
+  localStorage.setItem('hfw_autocycle', S.autocycle);
   localStorage.setItem('hfw_dxrefresh',  S.dxRefresh);
-  localStorage.setItem('hfw_theme',      S.theme);
-  localStorage.setItem('hfw_owmkey',      S.owmKey);
-  localStorage.setItem('hfw_qrzkey',      S.qrzKey);
+  localStorage.setItem('hfw_uitheme',   S.uiTheme);
+  localStorage.setItem('hfw_accent',    S.accentColor);
+  localStorage.setItem('hfw_owmkey',    S.owmKey);
+  localStorage.setItem('hfw_qrzkey',    S.qrzKey);
   const badge = document.getElementById('qth-badge');
   if (badge) badge.textContent = (S.callsign||S.grid) ? `${S.callsign||'---'} / ${S.grid||'----'}` : '';
   const hdrCall = document.getElementById('hdr-callsign');
@@ -1180,10 +1262,15 @@ function openSettings() {
   document.getElementById('s-call').value      = S.callsign;
   document.getElementById('s-grid').value      = S.grid;
   document.getElementById('s-refresh').value   = S.refresh;
-  document.getElementById('s-dxrefresh').value = S.dxRefresh;
-  document.getElementById('s-autocycle').value = S.autocycle;
+  document.getElementById('s-dxrefresh').value  = S.dxRefresh;
+  document.getElementById('s-autocycle').value  = S.autocycle;
   document.getElementById('s-owmkey').value    = S.owmKey;
   document.getElementById('s-qrzkey').value    = S.qrzKey;
+  // Reflect current selections
+  document.querySelectorAll('.sp-uitheme-btn').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.uitheme === S.uiTheme));
+  document.querySelectorAll('.sp-accent-swatch').forEach(sw =>
+    sw.classList.toggle('active', sw.dataset.accent === S.accentColor));
   document.getElementById('settings-overlay').classList.add('open');
   const focusEl = S.callsign ? 's-grid' : 's-call';
   setTimeout(() => document.getElementById(focusEl).focus(), 80);
@@ -1193,8 +1280,8 @@ function commitSettings() {
   const newCall      = document.getElementById('s-call').value.toUpperCase().replace(/[^A-Z0-9/]/g,'').trim();
   const newGrid      = document.getElementById('s-grid').value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6).trim();
   const newRef       = Math.max(5,  Math.min(60,  parseInt(document.getElementById('s-refresh').value)    || S.refresh));
-  const newDxRef     = Math.max(30, Math.min(300, parseInt(document.getElementById('s-dxrefresh').value)  || S.dxRefresh));
-  const newCycle     = Math.max(10, Math.min(300, parseInt(document.getElementById('s-autocycle').value)  || S.autocycle));
+  const newDxRef      = Math.max(30,  Math.min(300, parseInt(document.getElementById('s-dxrefresh').value)   || S.dxRefresh));
+  const newCycle      = Math.max(10,  Math.min(300, parseInt(document.getElementById('s-autocycle').value)   || S.autocycle));
 
   const dxRefChanged = newDxRef !== S.dxRefresh;
   S.callsign = newCall; S.grid = newGrid; S.refresh = newRef;
@@ -1264,11 +1351,20 @@ document.getElementById('s-grid').addEventListener('input', (e) => {
   });
 });
 
-// Theme swatches — fully wired
-document.querySelectorAll('.sp-theme-swatch').forEach(sw => {
+// UI Theme buttons
+document.querySelectorAll('.sp-uitheme-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    S.uiTheme = btn.dataset.uitheme;
+    applyTheme(S.uiTheme, S.accentColor);
+    saveState();
+  });
+});
+
+// Accent color swatches
+document.querySelectorAll('.sp-accent-swatch').forEach(sw => {
   sw.addEventListener('click', () => {
-    S.theme = sw.dataset.theme;
-    applyTheme(S.theme);
+    S.accentColor = sw.dataset.accent;
+    applyTheme(S.uiTheme, S.accentColor);
     saveState();
   });
 });
@@ -1288,7 +1384,7 @@ document.querySelectorAll('[data-tip]').forEach(el => {
   el.addEventListener('mouseleave', hideAlertTip);
 });
 saveState();
-applyTheme(S.theme);   // restore saved theme on every page load
+applyTheme(S.uiTheme, S.accentColor); // restore saved theme on every page load
 document.getElementById('refresh-btn').addEventListener('click', fetchAll);
 
 // ══════════════════════════════════════════
@@ -1463,9 +1559,16 @@ function showAlertTip(e, fullMsg, time, isWarn) {
 function positionAlertTip(e) {
   const pad = 14;
   const tw = _alertTip.offsetWidth, th = _alertTip.offsetHeight;
-  let x = e.clientX + pad, y = e.clientY + pad;
-  if (x + tw > window.innerWidth  - pad) x = e.clientX - tw - pad;
-  if (y + th > window.innerHeight - pad) y = e.clientY - th - pad;
+  // Use touch coordinates if available (mobile), fall back to mouse
+  const cx = e.touches ? e.touches[0].clientX : e.clientX;
+  const cy = e.touches ? e.touches[0].clientY : e.clientY;
+  let x = cx + pad, y = cy + pad;
+  // Clamp fully within viewport
+  if (x + tw > window.innerWidth  - pad) x = Math.max(pad, cx - tw - pad);
+  if (y + th > window.innerHeight - pad) y = Math.max(pad, cy - th - pad);
+  // Hard clamp — never allow negative or off-screen
+  x = Math.max(pad, Math.min(x, window.innerWidth  - tw - pad));
+  y = Math.max(pad, Math.min(y, window.innerHeight - th - pad));
   _alertTip.style.left = `${x}px`;
   _alertTip.style.top  = `${y}px`;
 }
@@ -1473,6 +1576,13 @@ function positionAlertTip(e) {
 function hideAlertTip() {
   _alertTipTimer = setTimeout(() => { _alertTip.style.display = 'none'; }, 80);
 }
+
+// Dismiss any open tooltip on touch outside (mobile sticky fix)
+document.addEventListener('touchstart', (e) => {
+  if (_alertTip.style.display !== 'none' && !e.target.closest('[data-tip]') && !e.target.closest('.alert-row')) {
+    hideAlertTip();
+  }
+}, { passive: true });
 
 function renderAlerts(data) {
   const el = document.getElementById('alerts-list');
@@ -1546,6 +1656,9 @@ function gridBounds(g){g=g.toUpperCase();if(g.length<4)return null;const lon=(g.
 let _mapInited=false, _gridLayers={}, _csMarker=null;
 
 let _gridGreyCanvas = null, _gridGreyOn = false;
+
+// World copy offsets — covers ±2 full copies visible at wide zoom levels
+const WORLD_COPIES = [-360, 0, 360, 720];
 
 function initMap(){
   if(_mapInited)return; _mapInited=true;
@@ -1663,7 +1776,7 @@ async function lookupCallsign(call) {
       transform:translate(-50%, -100%) translateY(-12px);
     ">
       <div style="
-        font-family:Orbitron,sans-serif;
+        font-family:${themeColor('--font-ui')};
         background:${tBg3};
         border:2px solid ${tAmber};
         box-shadow:0 0 16px ${tAmberDim}80, inset 0 0 8px ${tAmberDim}20;
@@ -1673,8 +1786,8 @@ async function lookupCallsign(call) {
         min-width:120px;
       ">
         <div style="font-size:22px;font-weight:900;color:${tAmber};letter-spacing:.18em;line-height:1.1;">${rec.call}</div>
-        <div style="font-size:13px;color:${tText};margin-top:4px;font-family:'Share Tech Mono',monospace;letter-spacing:.06em;line-height:1.3;">${name}</div>
-        <div style="font-size:11px;color:${tTextDim};margin-top:3px;font-family:'Share Tech Mono',monospace;letter-spacing:.04em;">${grid}${loc?' · '+loc:''}</div>
+        <div style="font-size:13px;color:${tText};margin-top:4px;font-family:'DM Mono',monospace;letter-spacing:.06em;line-height:1.3;">${name}</div>
+        <div style="font-size:11px;color:${tTextDim};margin-top:3px;font-family:'DM Mono',monospace;letter-spacing:.04em;">${grid}${loc?' · '+loc:''}</div>
       </div>
       <div style="
         position:absolute;left:50%;transform:translateX(-50%);
@@ -1718,9 +1831,8 @@ function drawGrid(map){
   const bb = map.getBounds().pad(.3);
   ['fields','squares','labels'].forEach(k=>{if(_gridLayers[k]){map.removeLayer(_gridLayers[k]);_gridLayers[k]=null;}});
 
-  const _tc   = THEMES[S.theme] || THEMES.amber;
-  const cLine  = _tc['--amber']     || THEMES.amber['--amber'];
-  const cLabel = _tc['--amber-dim'] || THEMES.amber['--amber-dim'];
+  const cLine  = themeColor('--amber');
+  const cLabel = themeColor('--amber-dim');
 
   if(showF){
     const fl=[];
@@ -1735,7 +1847,7 @@ function drawGrid(map){
           const normLon = ((((lon + 180) % 360) + 360) % 360) - 180;
           const fi = Math.floor((normLon + 180) / 20);  // 0-17
           const fj = Math.floor((lat   + 90)  / 10);   // 0-17
-          fl.push(L.marker([clat,clon],{icon:L.divIcon({html:`<div style="font-family:Orbitron,sans-serif;font-size:11px;color:${cLabel};opacity:0.75;font-weight:700;pointer-events:none;transform:translate(-50%,-50%)">${String.fromCharCode(65+fi)+String.fromCharCode(65+fj)}</div>`,iconSize:[0,0],className:''})}));
+          fl.push(L.marker([clat,clon],{icon:L.divIcon({html:`<div style="font-family:${themeColor("--font-ui")};font-size:11px;color:${cLabel};opacity:0.75;font-weight:700;pointer-events:none;transform:translate(-50%,-50%)">${String.fromCharCode(65+fi)+String.fromCharCode(65+fj)}</div>`,iconSize:[0,0],className:''})}));
         }
       }
     }
@@ -1757,7 +1869,7 @@ function goToGrid(g,animate=true){
     const mc = themeColor('--amber-bright');
     const mb = themeColor('--bg2');
     const mb2 = themeColor('--border-lit');
-    mkGroup.addLayer(L.marker([center[0],center[1]+offset],{icon:L.divIcon({html:`<div style="font-family:Orbitron,sans-serif;font-size:11px;font-weight:700;color:${mc};white-space:nowrap;background:${mb};padding:2px 7px;border:1px solid ${mb2};display:inline-block;transform:translate(-50%,-100%) translateY(-6px)">${label}</div>`,iconSize:null,iconAnchor:[0,0],className:''})}));
+    mkGroup.addLayer(L.marker([center[0],center[1]+offset],{icon:L.divIcon({html:`<div style="font-family:${themeColor("--font-ui")};font-size:11px;font-weight:700;color:${mc};white-space:nowrap;background:${mb};padding:2px 7px;border:1px solid ${mb2};display:inline-block;transform:translate(-50%,-100%) translateY(-6px)">${label}</div>`,iconSize:null,iconAnchor:[0,0],className:''})}));
   });
   _gridLayers.hl=hlGroup.addTo(map);
   _gridLayers.mk=mkGroup.addTo(map);
@@ -1803,7 +1915,7 @@ function renderGreyCanvas(targetMap, targetCanvas){
   const lngStartR=ll0.lng*Math.PI/180,lngPerPxR=(llW.lng-ll0.lng)*Math.PI/180/W;
   const cosD=Math.cos(lngPerPxR),sinD=Math.sin(lngPerPxR);
   // Parse theme primary color into RGB for per-pixel twilight shading
-  const _hexCol = (THEMES[S.theme]||THEMES.amber)['--amber'] || '#ffaa00';
+  const _hexCol = themeColor('--amber') || '#d8d8d8';
   const _r=parseInt(_hexCol.slice(1,3),16), _g=parseInt(_hexCol.slice(3,5),16), _b=parseInt(_hexCol.slice(5,7),16);
 
   const imgData=ctx.createImageData(W,H);const data=imgData.data;
@@ -1818,10 +1930,9 @@ function renderGreyCanvas(targetMap, targetCanvas){
 
   // Draw terminator — color follows active theme
   const term=computeTerminator(_greySun.lat,_greySun.lon);
-  const _tc = THEMES[S.theme]||THEMES.amber;
-  const _tAmber  = _tc['--amber']        || THEMES.amber['--amber'];
-  const _tBright = _tc['--amber-bright'] || THEMES.amber['--amber-bright'];
-  const _tDim    = _tc['--amber-dim']    || THEMES.amber['--amber-dim'];
+  const _tAmber  = themeColor('--amber');
+  const _tBright = themeColor('--amber-bright');
+  const _tDim    = themeColor('--amber-dim');
   ctx.save();
   ctx.strokeStyle=_tAmber;ctx.lineWidth=1.5;
   ctx.shadowBlur=8;ctx.shadowColor=_tBright;
@@ -2029,12 +2140,16 @@ function dxSaveBandPrefs(activeSet) {
 
 let _dxActive = false;           // master on/off
 let _dxBandsOn = dxLoadBandPrefs();
-let _dxLayers = {};              // band → L.LayerGroup
-let _dxSpots = [];               // current spot list
+let _dxModeFilter = 'all';       // mode filter: 'all' | 'ssb' | 'cw' | 'digi'
+let _dxCanvas = [];              // [{spot, group, band, addedAt, key, fading}]
 let _dxTimer = null;             // refresh countdown timer
 let _dxTick = 0;
-const DX_INTERVAL = 60;          // seconds between fetches
+let _dxExpireTimer = null;       // 1s ticker for lifetime expiry
 let _dxOpenPopup = null;         // currently visible label marker
+
+const DX_LIFETIME_MS = 3 * 60 * 1000;
+const DX_FADE_MS     = 3000;           // 3-second fade-out
+const DX_MAX_SPOTS   = 50;             // max simultaneous spots
 
 // ── DXCC Prefix → [lat, lon]  (longest-first for correct matching) ──
 const DXCC_PREFIXES = [
@@ -2234,41 +2349,37 @@ function dxInitPanel() {
 // ── Toggle master DX on/off ──
 function dxToggle() {
   _dxActive = !_dxActive;
-  const liveBtn  = document.getElementById('dx-live-btn');
-  const bandRow  = document.getElementById('dx-band-row');
-  const spotCt   = document.getElementById('dx-spot-count');
-  const refreshCd= document.getElementById('dx-refresh-cd');
+  const liveBtn   = document.getElementById('dx-live-btn');
+  const bandRow   = document.getElementById('dx-band-row');
+  const modeFilter = document.getElementById('dx-mode-filter');
 
   liveBtn.classList.toggle('active', _dxActive);
-  bandRow.style.display   = _dxActive ? 'flex'   : 'none';
-  spotCt.style.display    = _dxActive ? 'inline' : 'none';
-  refreshCd.style.display = _dxActive ? 'inline' : 'none';
+  bandRow.style.display    = _dxActive ? 'flex'   : 'none';
+  modeFilter.style.display = _dxActive ? 'inline-block' : 'none';
 
   if (_dxActive) {
     dxInitPanel();
     dxFetch();
     _dxTick = S.dxRefresh;
     _dxTimer = setInterval(dxTick, 1000);
+    _dxExpireTimer = setInterval(dxExpireTick, 1000);
   } else {
     clearInterval(_dxTimer); _dxTimer = null;
-    dxClearLayers();
-    spotCt.textContent  = '';
-    refreshCd.textContent = '';
+    clearInterval(_dxExpireTimer); _dxExpireTimer = null;
+    dxClearCanvas();
+    // Reset mode filter
+    _dxModeFilter = 'all';
+    modeFilter.value = 'all';
   }
 }
 
 function dxTick() {
   _dxTick--;
-  const cd = document.getElementById('dx-refresh-cd');
-  if (cd) cd.textContent = `↻ ${_dxTick}s`;
   if (_dxTick <= 0) { dxFetch(); _dxTick = S.dxRefresh; }
 }
 
 // ── Fetch spots via local Python proxy (no CORS issues) ──
 async function dxFetch() {
-  const countEl = document.getElementById('dx-spot-count');
-  if (countEl) countEl.textContent = 'Fetching…';
-
   let spots = null;
   let errMsg = '';
 
@@ -2285,115 +2396,201 @@ async function dxFetch() {
     errMsg = `Proxy error: ${e.message} — is start.py running?`;
   }
 
-  if (!spots || !spots.length) {
-    if (countEl) { countEl.textContent = errMsg || 'No spots'; countEl.title = errMsg; }
-    return;
-  }
+  if (!spots || !spots.length) { return; }
 
-  _dxSpots = spots.filter(s => s.de && s.dx);
-  dxRender();
+  dxMergeSpots(spots.filter(s => s.de && s.dx));
 }
 
-// ── Render all spots ──
-function dxClearLayers() {
-  const map = window._map; if (!map) return;
-  Object.values(_dxLayers).forEach(lg => map.removeLayer(lg));
-  _dxLayers = {};
-  if (_dxOpenPopup) { map.removeLayer(_dxOpenPopup); _dxOpenPopup = null; }
+// ── Spot key for deduplication ──
+function dxSpotKey(spot) {
+  return `${spot.de}|${spot.dx}|${Math.round(parseFloat(spot.freq))}`;
 }
 
-// World copy offsets — covers ±2 full copies visible at minZoom:2
-const WORLD_COPIES = [-360, 0, 360, 720];
+// ── Mode inference (API sends no mode field; infer from comment + frequency) ──
+function dxInferMode(spot) {
+  const c = (spot.comment || '').toUpperCase();
+  const f = parseFloat(spot.freq) || 0;
+  const fMHz = f > 100 ? f / 1000 : f;
 
-function dxRender() {
-  const map = window._map; if (!map) return;
-  dxClearLayers();
+  if (/\bFT8\b|\bFT4\b|\bJS8\b|\bPSK\b|\bRTTY\b|\bJT65\b|\bJT9\b|\bWSPR\b|\bMFSK\b|\bOLIVIA\b|\bTHOR\b|\bDIGI\b|\bDATA\b/.test(c)) return 'digi';
+  if (/\bSSB\b|\bLSB\b|\bUSB\b|\bPHONE\b|\bAM\b|\bFM\b/.test(c)) return 'ssb';
+  if (/\bCW\b/.test(c)) return 'cw';
 
-  Object.keys(DX_BANDS).forEach(b => { _dxLayers[b] = L.layerGroup(); });
+  if ((fMHz >= 1.8    && fMHz <= 1.84)   || (fMHz >= 3.5    && fMHz <= 3.6)    ||
+      (fMHz >= 7.0    && fMHz <= 7.04)   || (fMHz >= 10.1   && fMHz <= 10.13)  ||
+      (fMHz >= 14.0   && fMHz <= 14.07)  || (fMHz >= 18.068 && fMHz <= 18.095) ||
+      (fMHz >= 21.0   && fMHz <= 21.07)  || (fMHz >= 24.89  && fMHz <= 24.915) ||
+      (fMHz >= 28.0   && fMHz <= 28.07)  || (fMHz >= 50.0   && fMHz <= 50.1))   return 'cw';
 
-  let rendered = 0;
+  if ((fMHz >= 1.84   && fMHz <= 1.843)  || (fMHz >= 3.568  && fMHz <= 3.6)    ||
+      (fMHz >= 7.04   && fMHz <= 7.074)  || (fMHz >= 10.13  && fMHz <= 10.15)  ||
+      (fMHz >= 14.07  && fMHz <= 14.1)   || (fMHz >= 18.1   && fMHz <= 18.109) ||
+      (fMHz >= 21.07  && fMHz <= 21.12)  || (fMHz >= 24.915 && fMHz <= 24.925) ||
+      (fMHz >= 28.07  && fMHz <= 28.19))  return 'digi';
 
-  _dxSpots.slice(0, 50).forEach(spot => {
-    let band = dxFreqToBand(spot.freq);
-    if (!band && spot.band) band = String(spot.band).replace(/m$/i,'').trim();
-    if (!band || !DX_BANDS[band]) return;
+  return 'ssb';
+}
 
-    const color = DX_BANDS[band].color;
+function dxModeMatch(spot) {
+  if (_dxModeFilter === 'all') return true;
+  return dxInferMode(spot) === _dxModeFilter;
+}
 
-    const deLoc = (spot.de_lat != null && spot.de_lon != null)
-      ? [spot.de_lat, spot.de_lon] : dxCallToLatLon(spot.de);
-    const dxLoc = (spot.dx_lat != null && spot.dx_lon != null)
-      ? [spot.dx_lat, spot.dx_lon] : dxCallToLatLon(spot.dx);
-    if (!deLoc || !dxLoc) return;
+// ── Fade out and remove a canvas entry ──
+function dxFadeEntry(entry) {
+  if (entry.fading) return;
+  entry.fading = true;
+  const map = window._map;
+  // Fade all SVG paths and marker elements
+  entry.group.eachLayer(layer => {
+    const el = layer.getElement ? layer.getElement() : null;
+    if (el) { el.style.transition = `opacity ${DX_FADE_MS}ms ease`; el.style.opacity = '0'; }
+  });
+  setTimeout(() => {
+    if (map && map.hasLayer(entry.group)) map.removeLayer(entry.group);
+    _dxCanvas = _dxCanvas.filter(e => e !== entry);
+  }, DX_FADE_MS);
+}
 
-    const [deLat, deLon] = deLoc;
-    const [dxLat, dxLon] = dxLoc;
+// ── Clear all canvas entries immediately (toggle-off) ──
+function dxClearCanvas() {
+  const map = window._map;
+  _dxCanvas.forEach(e => { if (map && map.hasLayer(e.group)) map.removeLayer(e.group); });
+  _dxCanvas = [];
+  if (_dxOpenPopup && map) { map.removeLayer(_dxOpenPopup); _dxOpenPopup = null; }
+}
 
-    // Normalise arc so first point starts in [-180,180]
-    const baseArc = gcPoints(deLat, deLon, dxLat, dxLon);
-    while (baseArc[0][1] >  180) baseArc.forEach(p => p[1] -= 360);
-    while (baseArc[0][1] < -180) baseArc.forEach(p => p[1] += 360);
+// ── Build and add a single spot to the canvas ──
+function dxAddSpot(spot, now) {
+  const map = window._map; if (!map) return false;
 
-    const freqMHz = (f => f > 100 ? (f/1000).toFixed(1) : parseFloat(f).toFixed(1))(spot.freq);
+  let band = dxFreqToBand(spot.freq);
+  if (!band && spot.band) band = String(spot.band).replace(/m$/i, '').trim();
+  if (!band || !DX_BANDS[band]) return false;
 
-    const showPopup = (popDxLon) => {
-      if (_dxOpenPopup) { map.removeLayer(_dxOpenPopup); _dxOpenPopup = null; }
-      const html = `
-        <div class="dx-spot-label" style="color:${color};border-color:${color};transform:translate(-50%,-115%)">
-          <div class="dx-label-call" style="color:${color};margin-top:2px;">de ${spot.de}  ${(spot.time||'').substring(0,12)}</div>
-        </div>`;
-      _dxOpenPopup = L.marker([dxLat, popDxLon], {
-        icon: L.divIcon({html, iconSize:null, iconAnchor:[0,0], className:''}),
-        interactive:false, zIndexOffset:900
-      }).addTo(map);
-    };
+  const deLoc = (spot.de_lat != null && spot.de_lon != null)
+    ? [spot.de_lat, spot.de_lon] : dxCallToLatLon(spot.de);
+  const dxLoc = (spot.dx_lat != null && spot.dx_lon != null)
+    ? [spot.dx_lat, spot.dx_lon] : dxCallToLatLon(spot.dx);
+  if (!deLoc || !dxLoc) return false;
 
-    // Draw arc + markers on each world copy
-    WORLD_COPIES.forEach(offset => {
-      const shiftedArc = baseArc.map(([la, lo]) => [la, lo + offset]);
+  const [deLat, deLon] = deLoc;
+  const [dxLat, dxLon] = dxLoc;
+  const color = DX_BANDS[band].color;
+  const freqMHz = (f => f > 100 ? (f / 1000).toFixed(1) : parseFloat(f).toFixed(1))(spot.freq);
 
-      const line = L.polyline(shiftedArc, {color, weight:1.4, opacity:.55, smoothFactor:1});
-      const deM  = L.marker([deLat, deLon + offset], {icon: dxTriIcon(color, true),  zIndexOffset:100});
-      const dxM  = L.marker([dxLat, dxLon + offset], {icon: dxTriIcon(color, false), zIndexOffset:200});
+  const baseArc = gcPoints(deLat, deLon, dxLat, dxLon);
+  while (baseArc[0][1] >  180) baseArc.forEach(p => p[1] -= 360);
+  while (baseArc[0][1] < -180) baseArc.forEach(p => p[1] += 360);
 
-      const onClick = (e) => { L.DomEvent.stopPropagation(e); showPopup(dxLon + offset); };
-      line.on('click', onClick);
-      deM.on('click', onClick);
-      dxM.on('click', onClick);
+  const group = L.layerGroup();
 
-      _dxLayers[band].addLayer(line);
-      _dxLayers[band].addLayer(deM);
-      _dxLayers[band].addLayer(dxM);
-    });
+  const showPopup = (popDxLon) => {
+    if (_dxOpenPopup) { map.removeLayer(_dxOpenPopup); _dxOpenPopup = null; }
+    const html = `
+      <div class="dx-spot-label" style="color:${color};border-color:${color};transform:translate(-50%,-115%)">
+        <div class="dx-label-call" style="color:${color}">${spot.dx}</div>
+        <div class="dx-label-info">${freqMHz} MHz &nbsp; de ${spot.de} &nbsp; ${(spot.time || '').substring(0, 12)}</div>
+      </div>`;
+    _dxOpenPopup = L.marker([dxLat, popDxLon], {
+      icon: L.divIcon({ html, iconSize: null, iconAnchor: [0, 0], className: '' }),
+      interactive: false, zIndexOffset: 900
+    }).addTo(map);
+  };
 
-    rendered++;
+  WORLD_COPIES.forEach(offset => {
+    const shiftedArc = baseArc.map(([la, lo]) => [la, lo + offset]);
+    const line = L.polyline(shiftedArc, { color, weight: 1.4, opacity: .55, smoothFactor: 1 });
+    const deM  = L.marker([deLat, deLon + offset], { icon: dxTriIcon(color, true),  zIndexOffset: 100 });
+    const dxM  = L.marker([dxLat, dxLon + offset], { icon: dxTriIcon(color, false), zIndexOffset: 200 });
+    const onClick = (e) => { L.DomEvent.stopPropagation(e); showPopup(dxLon + offset); };
+    line.on('click', onClick);
+    deM.on('click', onClick);
+    dxM.on('click', onClick);
+    group.addLayer(line);
+    group.addLayer(deM);
+    group.addLayer(dxM);
   });
 
-  dxApplyBandVisibility();
+  // Only add to map if band is currently visible
+  if (_dxBandsOn.has(band)) group.addTo(map);
 
+  const entry = { spot, group, band, addedAt: now, key: dxSpotKey(spot), fading: false };
+  _dxCanvas.push(entry);
+
+  // Schedule expiry
+  setTimeout(() => dxFadeEntry(entry), DX_LIFETIME_MS);
+
+  return true;
+}
+
+// ── Merge new spots from server into the live canvas ──
+function dxMergeSpots(newSpots) {
+  const map = window._map; if (!map) return;
+  const now = Date.now();
+
+  // Build set of keys already on canvas (including fading ones — no re-add)
+  const existingKeys = new Set(_dxCanvas.map(e => e.key));
+
+  const candidates = newSpots
+    .filter(s => s.de && s.dx)
+    .filter(s => dxModeMatch(s))
+    .filter(s => !existingKeys.has(dxSpotKey(s)));
+
+  for (const spot of candidates) {
+    // Enforce cap — fade oldest non-fading entry first
+    const active = _dxCanvas.filter(e => !e.fading);
+    if (active.length >= DX_MAX_SPOTS) {
+      active.sort((a, b) => a.addedAt - b.addedAt);
+      dxFadeEntry(active[0]);
+    }
+    dxAddSpot(spot, now);
+  }
+
+  // Register map click-to-dismiss popup
   if (window._dxMapClickHandler) map.off('click', window._dxMapClickHandler);
   window._dxMapClickHandler = () => {
     if (_dxOpenPopup) { map.removeLayer(_dxOpenPopup); _dxOpenPopup = null; }
   };
   map.on('click', window._dxMapClickHandler);
-
-  document.getElementById('dx-spot-count').textContent = `${rendered} spots`;
 }
 
+// ── Re-apply mode filter to visible canvas (filter change, no re-fetch) ──
+function dxApplyModeFilter() {
+  const map = window._map; if (!map) return;
+  _dxCanvas.filter(e => !e.fading).forEach(entry => {
+    const visible = dxModeMatch(entry.spot) && _dxBandsOn.has(entry.band);
+    if (visible && !map.hasLayer(entry.group)) entry.group.addTo(map);
+    if (!visible && map.hasLayer(entry.group)) map.removeLayer(entry.group);
+  });
+}
+
+// ── Band visibility toggle ──
 function dxApplyBandVisibility() {
   const map = window._map; if (!map) return;
-  Object.entries(_dxLayers).forEach(([band, lg]) => {
-    if (_dxBandsOn.has(band)) {
-      if (!map.hasLayer(lg)) lg.addTo(map);
-    } else {
-      if (map.hasLayer(lg)) map.removeLayer(lg);
-    }
+  _dxCanvas.filter(e => !e.fading).forEach(entry => {
+    const visible = _dxBandsOn.has(entry.band) && dxModeMatch(entry.spot);
+    if (visible && !map.hasLayer(entry.group)) entry.group.addTo(map);
+    if (!visible && map.hasLayer(entry.group)) map.removeLayer(entry.group);
   });
+}
+
+// ── Expire old spots (called every second while DX active) ──
+function dxExpireTick() {
+  const now = Date.now();
+  _dxCanvas
+    .filter(e => !e.fading && (now - e.addedAt) >= DX_LIFETIME_MS)
+    .forEach(e => dxFadeEntry(e));
 }
 
 // ── Wire DX toggle button (called after initMap) ──
 function dxWireControls() {
   document.getElementById('dx-live-btn').addEventListener('click', dxToggle);
+
+  document.getElementById('dx-mode-filter').addEventListener('change', (e) => {
+    _dxModeFilter = e.target.value;
+    dxApplyModeFilter();
+  });
 }
 
 // ══════════════════════════════════════════
