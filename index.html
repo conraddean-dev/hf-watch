@@ -1645,7 +1645,7 @@ function setStatus(state, msg) {
 // DATA SOURCES
 // ══════════════════════════════════════════
 const NOAA   = 'https://services.swpc.noaa.gov';
-const HAMQSL = 'https://www.hamqsl.com/solarxml.php';
+const HAMQSL = '/hamqsl'; // proxied through start.py to avoid CORS block
 
 async function safeFetch(url, type='json') {
   try {
@@ -3425,7 +3425,7 @@ setInterval(() => {
       const d = await r.json();
       if (d.error) return;
       el.textContent = `Active: ${fmt(d.active)}  |  Visits: ${fmt(d.total)}`;
-      el.style.display = '';
+      el.style.display = 'inline';
     } catch(e) {
       // Silently ignore — stats are non-critical
     }

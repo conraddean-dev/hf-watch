@@ -145,6 +145,8 @@ class Handler(SimpleHTTPRequestHandler):
             self._serve_dx()
         elif self.path.startswith('/owm/'):
             self._proxy_owm()
+        elif self.path == '/hamqsl':
+            self._proxy_hamqsl()
         elif self.path == '/stats':
             self._serve_stats()
         else:
@@ -226,6 +228,28 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header('Cache-Control', 'no-store')
         self.end_headers()
         self.wfile.write(body)
+
+    def _proxy_hamqsl(self):
+        """Proxy HamQSL solar XML — their server doesn't send CORS headers."""
+        try:
+            req = urllib.request.Request(
+                'https://www.hamqsl.com/solarxml.php',
+                headers={'User-Agent': 'HF-WATCH/2.0', 'Accept': 'text/xml, */*'}
+            )
+            with urllib.request.urlopen(req, context=ssl_ctx, timeout=12) as r:
+                data = r.read()
+                ct = r.headers.get('Content-Type', 'text/xml')
+            self.send_response(200)
+            self._cors()
+            self.send_header('Content-Type', ct)
+            self.send_header('Content-Length', str(len(data)))
+            self.send_header('Cache-Control', 'public, max-age=300')
+            self.end_headers()
+            self.wfile.write(data)
+        except Exception as e:
+            safe_print(f'  HamQSL proxy error: {e}')
+            self.send_response(502)
+            self.end_headers()
 
     def _proxy_owm(self):
         # /owm/{layer}/{z}/{x}/{y}.png?appid={key}
