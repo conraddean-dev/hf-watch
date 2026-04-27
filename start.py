@@ -6,12 +6,61 @@ Usage:  python start.py
 Open:   http://localhost:8080/hf-watch.html
 """
 
-import os, sys, ssl, json, urllib.request, urllib.parse
+import os, sys, ssl, json, time, hashlib, sqlite3, urllib.request, urllib.parse
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 PORT = 8080
+
+# ── Visitor stats database ────────────────────────────────────────────────────
+# Point DB_PATH at a Render Persistent Disk mount path for cross-deploy
+# persistence, e.g. '/data/hfwatch-stats.db'. Defaults to the app directory,
+# which persists across restarts but resets on redeploys.
+DB_PATH = os.environ.get('HFW_STATS_DB', os.path.join(os.getcwd(), 'hfwatch-stats.db'))
+
+def _db():
+    """Open a DB connection with WAL mode for safe concurrent access."""
+    conn = sqlite3.connect(DB_PATH, timeout=10, check_same_thread=False)
+    conn.execute('PRAGMA journal_mode=WAL')
+    return conn
+
+def init_db():
+    with _db() as db:
+        db.execute('''CREATE TABLE IF NOT EXISTS visits (
+            id       INTEGER PRIMARY KEY AUTOINCREMENT,
+            ip_hash  TEXT    NOT NULL,
+            ts       INTEGER NOT NULL
+        )''')
+        db.execute('CREATE INDEX IF NOT EXISTS idx_visits_ts ON visits(ts)')
+        db.commit()
+    safe_print(f'  DB    stats → {DB_PATH}')
+
+def record_visit(ip: str):
+    """Log a page load. IP is one-way hashed — never stored in plain text."""
+    ip_hash = hashlib.sha256(ip.encode('utf-8')).hexdigest()[:20]
+    ts      = int(time.time())
+    try:
+        with _db() as db:
+            db.execute('INSERT INTO visits (ip_hash, ts) VALUES (?,?)', (ip_hash, ts))
+            db.commit()
+    except Exception as e:
+        safe_print(f'  DB ✗  record_visit: {e}')
+
+def get_stats() -> dict:
+    """Return active unique visitors (last hour) and total all-time page loads."""
+    now      = int(time.time())
+    hour_ago = now - 3600
+    try:
+        with _db() as db:
+            active = db.execute(
+                'SELECT COUNT(DISTINCT ip_hash) FROM visits WHERE ts >= ?', (hour_ago,)
+            ).fetchone()[0]
+            total = db.execute('SELECT COUNT(*) FROM visits').fetchone()[0]
+        return {'active': active, 'total': total}
+    except Exception as e:
+        safe_print(f'  DB ✗  get_stats: {e}')
+        return {'active': 0, 'total': 0, 'error': str(e)}
 
 ssl_ctx = ssl.create_default_context()
 
@@ -96,7 +145,13 @@ class Handler(SimpleHTTPRequestHandler):
             self._serve_dx()
         elif self.path.startswith('/owm/'):
             self._proxy_owm()
+        elif self.path == '/stats':
+            self._serve_stats()
         else:
+            # Record a visit whenever the main app page is loaded
+            clean = self.path.split('?')[0].rstrip('/')
+            if clean in ('', '/hf-watch.html', '/index.html'):
+                record_visit(self.client_address[0])
             super().do_GET()
 
     def do_POST(self):
@@ -105,6 +160,9 @@ class Handler(SimpleHTTPRequestHandler):
         else:
             self.send_response(405)
             self.end_headers()
+
+    def _serve_stats(self):
+        self._json_response(get_stats())
 
     def _proxy_qrz_log(self):
         """
@@ -256,6 +314,7 @@ if __name__ == '__main__':
   +----------------------------------------------+
 ''')
     try:
+        init_db()
         ThreadingHTTPServer(('', PORT), Handler).serve_forever()
     except KeyboardInterrupt:
         safe_print('\n  Stopped.')

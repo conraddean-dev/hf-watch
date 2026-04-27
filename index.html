@@ -245,6 +245,11 @@ header {
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
 #status-right { margin-left: auto; display: flex; gap: 16px; }
 #qth-badge { font-family: var(--font-ui); font-size: .5rem; color: var(--amber-dim); letter-spacing: .1em; }
+#visitor-stats {
+  font-family: var(--font-ui); font-size: .5rem; color: var(--text-dim);
+  letter-spacing: .08em; white-space: nowrap; border-left: 1px solid var(--border);
+  padding-left: 14px; display: none;
+}
 
 /* ── SETTINGS PANEL ── */
 .overlay {
@@ -1009,6 +1014,7 @@ body.panel-open .leaflet-control-zoom { display: none !important; }
   <div id="status-right">
     <span id="last-update"></span>
     <span id="qth-badge"></span>
+    <span id="visitor-stats"></span>
     <span>HF·WATCH</span>
   </div>
 </div>
@@ -3398,6 +3404,36 @@ setInterval(() => {
   const el = document.getElementById('grey-next');
   if (el) el.textContent = `Refreshes in: ${60 - _greyTick}s`;
 }, 1000);
+
+// ══════════════════════════════════════════
+// VISITOR STATS  (polls /stats every 5 min)
+// ══════════════════════════════════════════
+(function() {
+  const el = document.getElementById('visitor-stats');
+  if (!el) return;
+
+  function fmt(n) {
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+    if (n >= 1000)    return (n / 1000).toFixed(1) + 'K';
+    return String(n);
+  }
+
+  async function fetchStats() {
+    try {
+      const r = await fetch('/stats', { cache: 'no-store' });
+      if (!r.ok) return;
+      const d = await r.json();
+      if (d.error) return;
+      el.textContent = `Active: ${fmt(d.active)}  |  Visits: ${fmt(d.total)}`;
+      el.style.display = '';
+    } catch(e) {
+      // Silently ignore — stats are non-critical
+    }
+  }
+
+  fetchStats();
+  setInterval(fetchStats, 5 * 60 * 1000); // refresh every 5 minutes
+})();
 </script>
 </body>
 </html>
